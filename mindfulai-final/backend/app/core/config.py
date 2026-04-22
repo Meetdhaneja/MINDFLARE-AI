@@ -1,7 +1,7 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import List
-
 
 class Settings(BaseSettings):
     APP_NAME: str = "MindfulAI"
@@ -33,14 +33,25 @@ class Settings(BaseSettings):
 
     CRISIS_HOTLINE: str = "iCall: 9152987821 | Vandrevala: 1860-2662-345"
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
+    # Allow local dev and Vercel preview/production domains by default.
+    ALLOWED_ORIGIN_REGEX: str = r"^https?://(localhost(:\d+)?|.*\.vercel\.app)$"
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def normalize_debug(cls, value):
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"release", "production", "prod"}:
+                return False
+            if lowered in {"development", "dev"}:
+                return True
+        return value
 
     class Config:
         env_file = ".env"
 
-
 @lru_cache()
 def get_settings():
     return Settings()
-
 
 settings = get_settings()
