@@ -22,13 +22,14 @@ async def lifespan(app: FastAPI):
     log.info("Database tables ready")
     provider = "Groq (cloud)" if settings.GROQ_API_KEY else "LM Studio (local - make sure it's running)"
     log.info(f"LLM provider: {provider}")
-
+    
+    # Initialize RAG service
     rag = rag_service.get_rag_service()
     if rag.initialize():
         log.info("RAG service initialized successfully")
     else:
         log.warning("RAG service initialization failed - few-shot prompts will be unavailable")
-
+    
     yield
     log.info("Shutting down")
 
@@ -45,6 +46,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origin_regex=settings.ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
