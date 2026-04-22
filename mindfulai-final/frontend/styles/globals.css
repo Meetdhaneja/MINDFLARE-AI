@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0a0b0f;
+  --s1: #101218;
+  --s2: #161b26;
+  --s3: #1e2435;
+  --b1: rgba(255,255,255,0.06);
+  --b2: rgba(255,255,255,0.1);
+  --b3: rgba(255,255,255,0.16);
+  --t1: #eef0f6;
+  --t2: #8d96aa;
+  --t3: #4e5769;
+  --acc: #5b8ef0;
+  --acc2: #7fa4f5;
+  --acc-d: rgba(91,142,240,0.12);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--t1);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--s3); border-radius: 2px; }
+
+/* input base */
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--s2);
+  border: 1px solid var(--b2);
+  border-radius: 10px;
+  color: var(--t1);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--acc); }
+.input::placeholder { color: var(--t3); }
+
+/* btn */
+.btn {
+  padding: 10px 20px;
+  background: var(--acc);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+}
+.btn:hover { background: var(--acc2); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* card */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--b1);
+  border-radius: 16px;
+}
+
+/* fade-in */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.2s ease forwards; }
+
+/* bounce dots */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-5px); opacity: 1; }
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--t3); animation: bounce 1.2s infinite; display: inline-block; }
+.dot:nth-child(2) { animation-delay: .2s; }
+.dot:nth-child(3) { animation-delay: .4s; }
