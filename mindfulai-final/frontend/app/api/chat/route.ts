@@ -174,7 +174,13 @@ RESPONSE CONSTRAINTS:
       reply = "I'm reflecting on everything you've shared. It feels like there's a lot underneath this... I'm here to listen as you navigate it.";
     }
 
-    return new Response(JSON.stringify({ reply }), { status: 200 });
+    return new Response(JSON.stringify({ 
+      reply,
+      emotion,
+      flow: stage,
+      flow_step: turnCount,
+      safe: true // Assuming safe if no crisis detected
+    }), { status: 200 });
 
   } catch (err) {
     return new Response(JSON.stringify({ reply: "I'm listening. Tell me more about what's on your mind." }), { status: 200 });

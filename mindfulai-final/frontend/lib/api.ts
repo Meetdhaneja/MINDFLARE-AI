@@ -79,6 +79,10 @@ class API {
     return r.data
   }
 
+  async saveChat(data: any): Promise<void> {
+    await this.client.post('/save', data)
+  }
+
   async chatStream(message: string, session_id: string): Promise<ReadableStream<StreamChunk>> {
     const token = typeof window !== 'undefined' ? localStorage.getItem('mf_token') : null
 

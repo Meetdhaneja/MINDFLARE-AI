@@ -14,57 +14,26 @@ import json
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["Chat"])
 
-@router.post("/chat", response_model=ChatRes)
-async def chat(
-    req: ChatReq,
+@router.post("/save")
+async def save_chat(
+    req: ChatRes,
     bg: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    # Get current flow state from last AI message in session
-    r = await db.execute(
-        select(Message)
-        .where(Message.user_id == user.id, Message.session_id == req.session_id)
-        .order_by(Message.timestamp.desc()).limit(1)
-    )
-    last = r.scalar_one_or_none()
-    flow_step = (last.flow_step + 1) if last else 0
-    flow_type = last.flow_type if last else "venting"
-
-    response_text, meta = await run_pipeline(
-        user_id=user.id,
-        session_id=req.session_id,
-        user_message=req.message,
-        db=db,
-        flow_step=flow_step,
-        flow_type=flow_type,
-    )
-
+    """Save a chat turn generated elsewhere (e.g. Next.js API) to the database"""
     bg.add_task(
         _save_turn_and_profile,
         user_id=user.id,
         session_id=req.session_id,
-        user_message=req.message,
-        ai_response=response_text,
-        emotion=meta["emotion"],
-        flow_type=meta["flow"],
-        flow_step=meta["flow_step"],
-        suggestion=meta["suggestion"].title if meta["suggestion"] else "",
-        is_crisis=not meta["safe"],
+        user_message="[Syncing...]", # User message is typically already saved or provided in req
+        ai_response=req.response,
+        emotion=req.emotion,
+        flow_type=req.flow,
+        flow_step=req.flow_step,
+        suggestion=req.suggestion.title if req.suggestion else "",
+        is_crisis=not req.safe,
     )
-
-    return ChatRes(
-        response=response_text,
-        emotion=meta["emotion"],
-        emotion_emoji=meta.get("emotion_emoji", "💭"),
-        emotion_color=meta.get("emotion_color", "#6B7280"),
-        risk=meta.get("risk", "low") if not meta["safe"] else "low",
-        suggestion=meta["suggestion"],
-        flow=meta["flow"],
-        flow_step=meta["flow_step"],
-        session_id=req.session_id,
-        safe=meta["safe"],
-    )
+    return {"status": "synced"}
 
 @router.post("/chat/stream")
 async def chat_stream(

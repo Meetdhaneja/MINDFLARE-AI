@@ -166,10 +166,19 @@ export default function ChatPage() {
       setMessages(prev => [...prev, aiMsg])
       setHistoryMsgs(prev => [...prev, { role: 'assistant', content: aiReply }])
 
-      // 3. UPDATE FLOW (Local logic for simplicity)
-      setFlowStep(prev => prev + 1)
-      if (flowStep > 2) setFlowType('exploring')
-      if (flowStep > 5) setFlowType('guiding')
+      // 3. SYNC TO DATABASE (POSTGRES)
+      api.saveChat({
+        response: aiReply,
+        emotion: data.emotion,
+        flow: data.flow,
+        flow_step: data.flow_step,
+        session_id: sessionId,
+        safe: data.safe
+      }).catch(e => console.warn('Sync error:', e))
+
+      // 4. UPDATE FLOW (Local logic for simplicity)
+      setFlowStep(data.flow_step)
+      setFlowType(data.flow)
 
     } catch (err: any) {
       console.error('Chat error:', err)
