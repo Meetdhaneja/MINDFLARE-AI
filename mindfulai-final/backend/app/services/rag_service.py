@@ -10,8 +10,10 @@ import numpy as np
 try:
     import faiss
     from sentence_transformers import SentenceTransformer
+    AI_LIBS_AVAILABLE = True
 except ImportError:
-    raise ImportError("Please install faiss-cpu and sentence-transformers: pip install faiss-cpu sentence-transformers")
+    AI_LIBS_AVAILABLE = False
+    logging.getLogger(__name__).warning("AI libraries (faiss/sentence-transformers) not found. RAG will be disabled.")
 
 from app.core.config import settings
 
@@ -27,6 +29,10 @@ class RAGService:
         
     def initialize(self) -> bool:
         """Lazy initialization: Load dataset, build embeddings, and create FAISS index"""
+        if not AI_LIBS_AVAILABLE:
+            log.warning("RAG initialization skipped: AI libraries not installed")
+            return False
+            
         if self.initialized:
             return True
             

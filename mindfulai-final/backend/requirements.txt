@@ -17,13 +17,11 @@ pydantic[email]==2.5.3
 # HTTP client (Groq / local LLM calls)
 httpx==0.26.0
 
-# AI / ML (emotion model downloads on first run)
-transformers==4.37.0
-torch==2.1.2
-
-# RAG / Vector Search
-faiss-cpu==1.8.0
-sentence-transformers==3.0.1
+# AI / ML (Removed for Vercel deployment - too heavy)
+# transformers==4.37.0
+# torch==2.1.2
+# faiss-cpu==1.8.0
+# sentence-transformers==3.0.1
 numpy==1.26.3
 
 # Env
