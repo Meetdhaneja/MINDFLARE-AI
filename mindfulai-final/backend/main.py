@@ -20,15 +20,14 @@ async def lifespan(app: FastAPI):
     log.info(f"Starting {settings.APP_NAME}")
     await create_tables()
     log.info("Database tables ready")
-    provider = "Groq (cloud)" if settings.GROQ_API_KEY else "LM Studio (local - make sure it's running)"
+    provider = "Groq (cloud)" if settings.GROQ_API_KEY else "LM Studio (local — make sure it's running)"
     log.info(f"LLM provider: {provider}")
     
-    # Initialize RAG service
-    rag = rag_service.get_rag_service()
-    if rag.initialize():
-        log.info("RAG service initialized successfully")
-    else:
-        log.warning("RAG service initialization failed - few-shot prompts will be unavailable")
+    # Initialize RAG service in background to prevent blocking startup
+    # import asyncio
+    # rag = rag_service.get_rag_service()
+    # asyncio.create_task(asyncio.to_thread(rag.initialize))
+    # log.info("RAG service initialization started in background")
     
     yield
     log.info("Shutting down")

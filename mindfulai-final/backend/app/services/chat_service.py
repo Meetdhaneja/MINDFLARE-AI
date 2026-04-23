@@ -25,13 +25,13 @@ def detect_flow(text: str, current: str = "venting") -> str:
 def get_stage(turn_count: int) -> str:
     """Determine conversation stage based on turn count"""
     if turn_count <= 2:
-        return "venting"
+        return "venting"      # User venting, therapist receives
     elif turn_count <= 5:
-        return "exploring"
+        return "exploring"    # Explore feelings, ask gentle questions
     elif turn_count <= 8:
-        return "guiding"
+        return "guiding"      # Offer insights, help see patterns
     else:
-        return "suggesting"
+        return "suggesting"   # Full suggestions allowed
 
 def next_step(step: int, text: str) -> int:
     openers = ["i think", "i feel", "i've been", "the reason", "because", "ever since", "what really"]
@@ -151,16 +151,7 @@ async def run_pipeline(user_id: int, session_id: str, user_message: str, db,
             min_step=settings.MIN_TURNS_BEFORE_SUGGESTION
         )
     
-    # 11. UPDATE MEMORY
-    await memory_service.update_profile(
-        user_id=user_id,
-        db=db,
-        user_message=user_message,
-        emotion=detected_emotion,
-        flow_type=conversation_stage,
-        new_suggestion=suggestion.title if suggestion else None,
-        response_hash=variation_engine.fingerprint(final)
-    )
+    # Memory update is deferred to BackgroundTasks using _save_turn_and_profile
     
     return final, {
         "emotion": detected_emotion,
@@ -228,6 +219,8 @@ async def run_pipeline_stream(user_id: int, session_id: str, user_message: str, 
 
     # 6. Humanize + safety overlay (applied after streaming)
     humanized = variation_engine.humanize(full_response, recent_hashes=recent_hashes, add_opener=(attempts == 0))
+    if humanized is None:
+        humanized = full_response
     final = safety_service.apply_safety(humanized, risk)
 
     # 7. Suggestion (delayed)
@@ -251,10 +244,4 @@ async def run_pipeline_stream(user_id: int, session_id: str, user_message: str, 
         "final_response": final  # Include the processed final response
     }
 
-    # 9. Update memory (background task)
-    await memory_service.update_profile(
-        user_id=user_id, db=db, user_message=user_message,
-        emotion=em["label"], flow_type=new_flow,
-        new_suggestion=suggestion.title if suggestion else None,
-        response_hash=variation_engine.fingerprint(final),
-    )
+    # Profile and message saving is now delegated to FastAPI BackgroundTasks in router

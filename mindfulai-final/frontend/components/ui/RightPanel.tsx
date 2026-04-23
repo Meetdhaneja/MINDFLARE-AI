@@ -42,9 +42,9 @@ export function RightPanel({ emotionLog, history, flowType, flowStep, msgCount, 
   const tabStyle = (t: string) => ({
     flex: 1, padding: '10px 6px', fontSize: '11px', cursor: 'pointer',
     color: tab === t ? 'var(--acc)' : 'var(--t3)',
+    border: 'none',
     borderBottom: tab === t ? '2px solid var(--acc)' : '2px solid transparent',
     marginBottom: '-1px', background: 'none',
-    border: 'none',
     transition: 'all 0.12s', fontFamily: 'inherit',
   } as React.CSSProperties)
 
@@ -63,7 +63,7 @@ export function RightPanel({ emotionLog, history, flowType, flowStep, msgCount, 
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
 
-        {/* Emotions tab */}
+        {/* ── Emotions tab ──────────────────────────── */}
         {tab === 'emotions' && (
           <>
             <div style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--t3)',
@@ -132,7 +132,7 @@ export function RightPanel({ emotionLog, history, flowType, flowStep, msgCount, 
           </>
         )}
 
-        {/* Context tab */}
+        {/* ── Context tab ───────────────────────────── */}
         {tab === 'context' && (
           <>
             <div style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--t3)',
@@ -164,7 +164,7 @@ export function RightPanel({ emotionLog, history, flowType, flowStep, msgCount, 
           </>
         )}
 
-        {/* Stats tab */}
+        {/* ── Stats tab ─────────────────────────────── */}
         {tab === 'stats' && (
           <>
             <div style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--t3)',
