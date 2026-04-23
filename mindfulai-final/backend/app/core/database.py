@@ -13,12 +13,19 @@ log = logging.getLogger(__name__)
 
 def _create_engine():
     """Create database engine with PostgreSQL fallback to SQLite."""
-    url = make_url(settings.DATABASE_URL)
+    url_str = settings.DATABASE_URL
+    
+    # Remove sslmode if present in string to avoid asyncpg TypeError, 
+    # we will handle SSL in connect_args
+    if "sslmode=" in url_str:
+        url_str = url_str.split("sslmode=")[0].rstrip("?&")
+
+    url = make_url(url_str)
 
     if url.drivername.startswith("sqlite"):
         log.info("Using SQLite database with WAL mode for better concurrency")
         engine = create_async_engine(
-            settings.DATABASE_URL,
+            url_str,
             echo=False,
             connect_args={"timeout": 60, "check_same_thread": False},
             pool_pre_ping=True,
@@ -35,14 +42,21 @@ def _create_engine():
         log.warning("Using SQLite. Switch to PostgreSQL for production.")
         return engine
 
-    log.info(f"Attempting PostgreSQL connection to {url.host}:{url.port}")
+    log.info(f"Attempting PostgreSQL connection to {url.host}")
+    
+    # Add SSL context for PostgreSQL (required for Neon)
+    connect_args = {}
+    if "neon.tech" in str(url.host):
+        connect_args["ssl"] = True
+
     return create_async_engine(
-        settings.DATABASE_URL,
+        url_str,
         pool_size=20,
         max_overflow=30,
         pool_pre_ping=True,
         pool_recycle=3600,
         echo=False,
+        connect_args=connect_args
     )
 
 
