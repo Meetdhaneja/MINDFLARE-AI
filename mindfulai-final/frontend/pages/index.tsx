@@ -142,80 +142,41 @@ export default function ChatPage() {
     setRiskLevel(detectRisk(content))
 
     try {
-      // Create streaming AI message placeholder
-      const aiMsgId = uuid()
+      // 1. CALL NEW LIGHTWEIGHT API
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_input: content,
+          messages: historyMsgs.slice(-6) // Only send last 6 for context
+        })
+      })
+
+      const data = await res.json()
+      const aiReply = data.reply
+
+      // 2. CREATE AI MESSAGE
       const aiMsg: Message = {
-        id: aiMsgId,
+        id: uuid(),
         role: 'assistant',
-        content: '',
+        content: aiReply,
         timestamp: new Date(),
       }
+
       setMessages(prev => [...prev, aiMsg])
+      setHistoryMsgs(prev => [...prev, { role: 'assistant', content: aiReply }])
 
-      // Stream the response
-      const stream = await api.chatStream(content, sessionId)
-      const reader = stream.getReader()
-
-      let fullContent = ''
-      let finalMeta: any = null
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          if (value.chunk) {
-            // Accumulate text chunks
-            fullContent += value.chunk
-            setMessages(prev => prev.map(msg =>
-              msg.id === aiMsgId ? { ...msg, content: fullContent } : msg
-            ))
-          } else if (value.final_response) {
-            // Final processed response
-            fullContent = value.final_response
-            finalMeta = value
-            setMessages(prev => prev.map(msg =>
-              msg.id === aiMsgId ? {
-                ...msg,
-                content: fullContent,
-                emotion: value.emotion,
-                emotionEmoji: value.emotion_emoji,
-                suggestion: value.suggestion
-              } : msg
-            ))
-          } else if (value.error) {
-            console.error('Stream error:', value.error)
-            setMessages(prev => prev.map(msg =>
-              msg.id === aiMsgId ? {
-                ...msg,
-                content: "I'm having a bit of trouble connecting right now. Could you try again in a moment?"
-              } : msg
-            ))
-            break
-          }
-        }
-      } finally {
-        reader.releaseLock()
-      }
-
-      // Update state from final metadata
-      if (finalMeta) {
-        if (finalMeta.emotion) {
-          updateEmotion(finalMeta.emotion, 1.0, finalMeta.emotion_emoji, finalMeta.emotion_color)
-        }
-        if (finalMeta.flow) setFlowType(finalMeta.flow)
-        if (typeof finalMeta.flow_step === 'number') setFlowStep(finalMeta.flow_step)
-        if (!finalMeta.safe) setRiskLevel('crisis')
-      }
-
-      setHistoryMsgs(prev => [...prev, { role: 'assistant', content: fullContent }])
+      // 3. UPDATE FLOW (Local logic for simplicity)
+      setFlowStep(prev => prev + 1)
+      if (flowStep > 2) setFlowType('exploring')
+      if (flowStep > 5) setFlowType('guiding')
 
     } catch (err: any) {
       console.error('Chat error:', err)
       const errMsg: Message = {
         id: uuid(),
         role: 'assistant',
-        content: "I'm having a bit of trouble connecting right now. Could you try again in a moment?",
+        content: "I'm here with you. Something went wrong on my side, but I'm still listening.",
         timestamp: new Date(),
       }
       setMessages(prev => [...prev, errMsg])
