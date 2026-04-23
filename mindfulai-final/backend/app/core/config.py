@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     GROQ_TIMEOUT: int = 25
     GROQ_MAX_RETRIES: int = 3
 
-    DATASET_PATH: str = "data/mental_health_conversations.jsonl"
+    DATASET_PATH: str = "data/chat_finetune.jsonl"
     FAISS_INDEX_PATH: str = "data/faiss_index"
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     RAG_TOP_K: int = 2
