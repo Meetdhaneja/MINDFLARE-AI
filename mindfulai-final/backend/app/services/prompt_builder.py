@@ -293,14 +293,23 @@ TONES = [
     "Be soft and wondering - use 'I wonder if...' naturally.",
 ]
 
-def build_system_prompt(emotion: str, flow_type: str, flow_step: int,
-                        profile: Dict, recent_hashes: List[str],
-                        min_suggest_step: int = 2, user_message: str = "", situation: str = "") -> str:
+def build_system_prompt(emotion: str, flow_stage: str, turn_count: int,
+                        memory_context: Dict, recent_hashes: List[str],
+                        user_message: str = "", situation: str = "",
+                        event: Optional[str] = None, last_bot_message: str = "") -> str:
     """Legacy function - use PromptBuilder class instead"""
     builder = PromptBuilder()
-    memory_context = {"long_term": profile}
-    flow_stage = "venting" if flow_step < 3 else "exploring" if flow_step < 5 else "guiding" if flow_step < 8 else "suggesting"
-    return builder.build_system_prompt(emotion, flow_stage, flow_step, memory_context, recent_hashes, user_message, situation)
+    return builder.build_system_prompt(
+        emotion=emotion, 
+        flow_stage=flow_stage, 
+        turn_count=turn_count, 
+        memory_context=memory_context, 
+        recent_hashes=recent_hashes, 
+        user_message=user_message, 
+        situation=situation,
+        event=event,
+        last_bot_message=last_bot_message
+    )
 
 def build_messages(user_msg: str, history: List[Dict], system: str) -> List[Dict]:
     """Legacy function - use PromptBuilder class instead"""
