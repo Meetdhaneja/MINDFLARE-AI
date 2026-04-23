@@ -1,150 +1,155 @@
 import { NextRequest } from "next/server";
 
+// -----------------------------
+// HELPER: SEMANTIC SIMILARITY (Jaccard)
+// -----------------------------
+function getSimilarity(text1: string, text2: string) {
+  const s1 = new Set(text1.toLowerCase().split(/\W+/));
+  const s2 = new Set(text2.toLowerCase().split(/\W+/));
+  const intersect = new Set([...s1].filter(x => s2.has(x)));
+  return intersect.size / Math.max(s1.size, s2.size);
+}
+
+// -----------------------------
+// HELPER: BANNED CLICHÉS
+// -----------------------------
+const BANNED_CLICHES = [
+  "i'm here with you",
+  "tell me what's on your mind",
+  "that sounds painful",
+  "you're not alone",
+  "i understand how you feel"
+];
+
+function containsBannedRepeatedly(text: string, history: any[]) {
+  const lower = text.toLowerCase();
+  const hits = BANNED_CLICHES.filter(c => lower.includes(c));
+  if (hits.length === 0) return false;
+
+  // Check if any of these hits were in the last 2 bot messages
+  const lastBotMsgs = history.filter(m => m.role === "assistant").slice(-2).map(m => m.content.toLowerCase());
+  return hits.some(h => lastBotMsgs.some(prev => prev.includes(h)));
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { messages, user_input } = await req.json();
 
-    // -----------------------------
-    // 1. LIGHT MEMORY (last 6 msgs)
-    // -----------------------------
-    const history = messages.slice(-6);
+    // 1. LIGHT MEMORY
+    const history = messages.slice(-10);
 
-    // -----------------------------
-    // 2. EMOTION DETECTION (simple)
-    // -----------------------------
+    // 2. DETECT STATE
     const text = user_input.toLowerCase();
-
     let emotion = "neutral";
     if (text.includes("sad") || text.includes("lonely")) emotion = "sad";
     if (text.includes("anxious") || text.includes("panic")) emotion = "anxiety";
 
-    // -----------------------------
-    // 3. EVENT DETECTION
-    // -----------------------------
     let event = "general";
     if (text.includes("cheated") || text.includes("breakup")) event = "relationship_pain";
     if (text.includes("alone") || text.includes("lonely")) event = "loneliness";
 
-    // -----------------------------
-    // 4. STAGE CONTROL
-    // -----------------------------
     const turnCount = history.length;
+    let stage = turnCount <= 2 ? "listening" : turnCount <= 5 ? "exploring" : "guiding";
 
-    let stage = "listening";
-    if (turnCount > 2) stage = "exploring";
-    if (turnCount > 5) stage = "guiding";
-
-    // -----------------------------
-    // 5. CHECK LAST MESSAGE TYPE
-    // -----------------------------
     const lastBot = history[history.length - 1]?.content || "";
     const lastWasQuestion = lastBot.includes("?");
 
-    // -----------------------------
-    // 6. DYNAMIC SYSTEM PROMPT (MASTER PERSONALITY)
-    // -----------------------------
-    let systemPrompt = `
-You are an emotionally intelligent, therapist-style AI assistant designed to feel natural, human, and supportive.
-Your goal is NOT to interrogate the user. Your goal is to make the user feel understood, safe, and gently guided.
+    const lastUserMsg = history.filter(m => m.role === "user").slice(-1)[0]?.content || "";
+    const isUserRepeating = user_input.toLowerCase() === lastUserMsg.toLowerCase();
 
-CORE BEHAVIOR:
-1. ALWAYS START WITH EMPATHY: Acknowledge the feeling before anything else.
-2. NEVER ACT LIKE A QUESTIONNAIRE: Max ONE question per response. NEVER ask questions in consecutive turns.
-3. NO REPETITION: NEVER repeat the same sentence or phrasing.
-4. HUMAN-LIKE STYLE: Keep responses short (2–4 lines). Natural, warm tone.
-5. SAFETY: Only suggest helplines if user shows clear self-harm intent.
+    // 3. MASTER PROMPT
+    let baseSystemPrompt = `
+You are an emotionally intelligent, therapist-style AI assistant.
+Your goal is NOT to interrogate. Make the user feel understood and gently guided.
 
-RESPONSE STRUCTURE:
-1. Emotional acknowledgment
-2. Short reflection
-3. Gentle support or insight
-4. Optional: ONE thoughtful question (not always)
+CORE RULES:
+* Max 1 question. NEVER consecutive turns.
+* ALWAYS start with empathy.
+* Keep responses 2-4 lines. Natural, warm tone.
+* CONTEXT PROGRESSION: Each response MUST add a new insight, angle, or deeper emotional understanding. Move the conversation forward.
     `;
 
-    if (stage === "listening") {
-      systemPrompt += `\nSTAGE: Early conversation. Listen, acknowledge, and show light curiosity.`;
-    } else if (stage === "exploring") {
-      systemPrompt += `\nSTAGE: Mid conversation. Reflect deeper, reduce questions.`;
-    } else {
-      systemPrompt += `\nSTAGE: Later conversation. Guide and offer small, thoughtful suggestions.`;
+    if (isUserRepeating) {
+      baseSystemPrompt += `\nUSER IS REPEATING: The user has said this before. Do NOT repeat your previous response. Instead, shift perspective, go deeper into the emotion, or guide the conversation forward in a new direction.`;
     }
 
-    if (event === "relationship_pain") {
-      systemPrompt += `\nEVENT: Relationship Pain. Acknowledge emotional pain and betrayal. Avoid generic advice.`;
-    } else if (event === "loneliness") {
-      systemPrompt += `\nEVENT: Loneliness. Provide emotional presence, not 'just go talk to people' advice.`;
-    } else if (event === "anxiety") {
-      systemPrompt += `\nEVENT: Anxiety. Use a slow tone and grounding support.`;
+    // 4. GENERATION LOOP (RETRY LOGIC)
+    let reply = "";
+    let attempts = 0;
+    const MAX_ATTEMPTS = 2;
+
+    while (attempts <= MAX_ATTEMPTS) {
+      let currentSystemPrompt = baseSystemPrompt;
+      
+      if (attempts > 0) {
+        currentSystemPrompt += `\nREWRITE INSTRUCTION: Your last attempt was too similar to previous responses. 
+        Rewrite this in a COMPLETELY new way. Change structure, tone, and approach. 
+        Do NOT repeat meaning or phrasing. Move the conversation forward.`;
+      }
+
+      // Contextual injection
+      if (stage === "listening") currentSystemPrompt += `\nSTAGE: Listening. Mirror feelings. No advice.`;
+      else if (stage === "exploring") currentSystemPrompt += `\nSTAGE: Exploring. Deep reflection.`;
+      else currentSystemPrompt += `\nSTAGE: Guiding. Offer a small, thoughtful suggestion.`;
+
+      if (event === "relationship_pain") currentSystemPrompt += `\nEVENT: Relationship Pain. Acknowledge betrayal specifically.`;
+      if (lastWasQuestion) currentSystemPrompt += `\nFLOW: Do NOT ask a question this time. Use a statement.`;
+
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+          messages: [
+            { role: "system", content: currentSystemPrompt },
+            ...history,
+            { role: "user", content: user_input }
+          ],
+          temperature: 0.8 // Higher temp for more variety
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        reply = generateFallback(user_input);
+        break;
+      }
+
+      reply = data.choices?.[0]?.message?.content || "";
+
+      // 5. SEMANTIC & CLICHÉ CHECK
+      const isTooSimilar = history
+        .filter((m: any) => m.role === "assistant")
+        .slice(-3)
+        .some((prev: any) => getSimilarity(reply, prev.content) > 0.75);
+
+      const isBannedRepeat = containsBannedRepeatedly(reply, history);
+
+      if (!isTooSimilar && !isBannedRepeat) {
+        break; // Good response found
+      }
+
+      attempts++;
     }
 
-    if (lastWasQuestion) {
-      systemPrompt += `\nCONVERSATION FLOW: You asked a question previously → do NOT ask again in this response. Use a statement or reflection instead.`;
-    }
-
-    // -----------------------------
-    // 7. CALL GROQ
-    // -----------------------------
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...history,
-          { role: "user", content: user_input }
-        ],
-        temperature: 0.7
-      })
-    });
-
-    const data = await response.json();
-
-    // -----------------------------
-    // 8. ERROR HANDLING (CRITICAL)
-    // -----------------------------
-    if (!response.ok) {
-      console.error("Groq error:", data);
-      return new Response(JSON.stringify({
-        reply: generateFallback(user_input)
-      }), { status: 200 });
-    }
-
-    let reply = data.choices?.[0]?.message?.content || "";
-
-    // -----------------------------
-    // 9. ANTI-REPETITION FIX
-    // -----------------------------
-    if (history.some((msg: any) => msg.content === reply)) {
-      reply = "I hear you… and I want to respond in a better way. Can you tell me a bit more about what’s been hardest for you?";
+    // 6. FAILSAFE FALLBACK
+    if (attempts > MAX_ATTEMPTS) {
+      reply = `I'm really reflecting on what you said about feeling ${emotion}. It sounds like this is hitting a deep spot. One small thing that might help right now is just taking a second to name what's feeling the heaviest. I'm right here with you.`;
     }
 
     return new Response(JSON.stringify({ reply }), { status: 200 });
 
   } catch (err) {
-    console.error("Server error:", err);
-    return new Response(JSON.stringify({
-      reply: "I'm here with you. Something went wrong on my side, but I'm still listening."
-    }), { status: 200 });
+    return new Response(JSON.stringify({ reply: "I'm listening. Tell me more about what's happening." }), { status: 200 });
   }
 }
 
-// -----------------------------
-// FALLBACK ENGINE (SMART)
-// -----------------------------
 function generateFallback(input: string) {
   const text = input.toLowerCase();
-
-  if (text.includes("cheated") || text.includes("breakup")) {
-    return "That sounds really painful… something like that can hurt deeply. I’m here with you.";
-  }
-
-  if (text.includes("alone") || text.includes("lonely")) {
-    return "Feeling alone like that can be heavy. You don’t have to go through it alone here.";
-  }
-
-  return "I'm here with you. Tell me what’s been on your mind.";
+  if (text.includes("cheated") || text.includes("breakup")) return "That sounds really painful… betrayal like that cuts deep. I’m here with you.";
+  if (text.includes("alone") || text.includes("lonely")) return "Feeling alone like that is heavy. You don’t have to carry it all by yourself right now.";
+  return "I'm listening. Tell me what’s been on your mind.";
 }
