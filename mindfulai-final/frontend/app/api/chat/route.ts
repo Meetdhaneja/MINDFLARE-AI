@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 // -----------------------------
-// HELPER: SEMANTIC SIMILARITY (Jaccard)
+// HELPER: SEMANTIC SIMILARITY
 // -----------------------------
 function getSimilarity(text1: string, text2: string) {
   const s1 = new Set(text1.toLowerCase().split(/\W+/));
@@ -11,113 +11,132 @@ function getSimilarity(text1: string, text2: string) {
 }
 
 // -----------------------------
-// HELPER: DECIDE ACTION
+// HELPER: STATE DETECTORS
 // -----------------------------
-function decideAction(stage: string, turnCount: number, emotion: string) {
-  if (stage === "listening") {
-    return turnCount === 0 ? "EMPATHIZE" : "REFLECT";
-  }
-  if (stage === "exploring") {
-    return "EXPLORE";
-  }
-  if (stage === "guiding") {
-    return turnCount % 2 === 0 ? "GUIDE" : "SUGGEST";
-  }
-  return "EMPATHIZE";
+function detectUserType(text: string) {
+  const t = text.toLowerCase();
+  if (t.includes("how do i") || t.includes("advice") || t.includes("help me decide")) return "Solution-seeker";
+  if (t.includes("don't know") || t.includes("unsure") || t.includes("confused")) return "Confused";
+  return "Venting";
+}
+
+function detectMomentum(text: string) {
+  const len = text.split(/\s+/).length;
+  if (len < 5) return "Low";
+  if (len < 20) return "Medium";
+  return "High";
+}
+
+function detectTrend(history: any[], currentEmotion: string) {
+  const lastEmotions = history.filter(m => m.emotion).slice(-3).map(m => m.emotion);
+  if (lastEmotions.length < 2) return "Stable";
+  return lastEmotions.every(e => e === currentEmotion) ? "Stable" : "Shifting";
 }
 
 // -----------------------------
-// HELPER: BANNED CLICHÉS
+// RESPONSE VALIDATION
 // -----------------------------
-const BANNED_CLICHES = [
-  "i'm here with you",
-  "tell me what's on your mind",
-  "that sounds painful",
-  "you're not alone",
-  "i understand how you feel"
-];
-
-function containsBannedRepeatedly(text: string, history: any[]) {
-  const lower = text.toLowerCase();
-  const hits = BANNED_CLICHES.filter(c => lower.includes(c));
-  if (hits.length === 0) return false;
-  const lastBotMsgs = history.filter(m => m.role === "assistant").slice(-2).map(m => m.content.toLowerCase());
-  return hits.some(h => lastBotMsgs.some(prev => prev.includes(h)));
+function validateResponse(response: string, history: any[]) {
+  const resLower = response.toLowerCase();
+  const bannedPatterns = ["always", "never", "definitely", "everyone", "i recommend", "you should"];
+  
+  if (bannedPatterns.some(p => resLower.includes(p))) return false;
+  
+  const isRepetitive = history
+    .filter(m => m.role === "assistant")
+    .slice(-3)
+    .some(prev => getSimilarity(response, prev.content) > 0.7);
+    
+  return !isRepetitive;
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { messages, user_input } = await req.json();
 
-    // 1. STATE DETECTION
-    const history = messages.slice(-10);
+    // 1. INPUT PIPELINE (ELITE BRAIN)
+    const history = messages.slice(-12);
     const text = user_input.toLowerCase();
     
+    // Emotion
     let emotion = "neutral";
-    if (text.includes("sad") || text.includes("lonely")) emotion = "sad";
+    if (text.includes("sad") || text.includes("lonely")) emotion = "sadness";
     if (text.includes("anxious") || text.includes("panic")) emotion = "anxiety";
 
-    let event = "general";
-    if (text.includes("cheated") || text.includes("breakup")) event = "relationship_pain";
-    if (text.includes("alone") || text.includes("lonely")) event = "loneliness";
-
+    // Trend
+    const trend = detectTrend(history, emotion);
+    
+    // User Type
+    const userType = detectUserType(user_input);
+    
+    // Depth
     const turnCount = history.length;
-    const stage = turnCount <= 2 ? "listening" : turnCount <= 5 ? "exploring" : "guiding";
+    const depth = turnCount <= 2 ? 1 : turnCount <= 5 ? 2 : 3;
     
-    const action = decideAction(stage, turnCount, emotion);
+    // Momentum
+    const momentum = detectMomentum(user_input);
     
-    const lastBot = history[history.length - 1]?.content || "";
-    const lastWasQuestion = lastBot.includes("?");
-    const lastUserMsg = history.filter(m => m.role === "user").slice(-1)[0]?.content || "";
-    const isUserRepeating = user_input.toLowerCase() === lastUserMsg.toLowerCase();
+    // Silence
+    const lastBotWasQ = (history[history.length - 1]?.content || "").includes("?");
+    const silence = (momentum === "Low" && lastBotWasQ);
 
-    // 2. ORCHESTRATOR PROMPT
-    let baseSystemPrompt = `
-You are an advanced conversational orchestrator for a human-like therapist AI.
-Your job is NOT just to reply. Your job is to DECIDE how to reply based on the conversation state.
+    // Action Logic
+    const stage = turnCount <= 2 ? "listening" : turnCount <= 5 ? "exploring" : "guiding";
+    let action = "EMPATHIZE";
+    if (stage === "listening") action = turnCount === 0 ? "EMPATHIZE" : "REFLECT";
+    else if (stage === "exploring") action = "EXPLORE";
+    else action = turnCount % 2 === 0 ? "GUIDE" : "SUGGEST";
+
+    // 2. CONTROLLED PROMPT BUILDING
+    const systemPrompt = `
+You are the decision-making brain of a human-like conversational AI.
+You generate controlled, grounded, and context-aware responses.
 
 ---
-CURRENT CONTEXT:
+INPUT STATE:
 Action: ${action}
 Emotion: ${emotion}
-Event: ${event}
-Stage: ${stage}
+Emotion Trend: ${trend}
+User Type: ${userType}
+Depth Level: ${depth}
+Momentum: ${momentum}
+Silence Mode: ${silence}
 ---
 
-PRIMARY OBJECTIVE: Generate a response that feels human, progresses the conversation, avoids repetition, and matches the selected ACTION strictly.
+CORE OBJECTIVE: Generate a response that is emotionally accurate, grounded in user input, and progressive.
 
-STRICT GLOBAL RULES:
-1. NEVER REPEAT: Do not reuse phrases, structures, or emotional statements.
-2. ALWAYS PROGRESS: Add new depth or direction. Build on what the user already said.
-3. HUMAN TONE: Natural, slightly warm, reflective. 2 to 4 lines only.
-4. QUESTION CONTROL: Max ONE question. If previous message had a question -> DO NOT ask again.
+STRICT ANTI-HALLUCINATION RULES:
+1. DO NOT INVENT FACTS: Only use info provided by user. Do NOT assume details.
+2. NO FAKE CERTAINTY: Avoid absolute statements like "always" or "definitely". Use "It sounds like" or "It might be".
+3. NOTopic Drift: Do not change topic or introduce unrelated ideas.
 
-ACTION-SPECIFIC BEHAVIOR:
-- EMPATHIZE: Validate emotion deeply. No advice. No question. Focus on safety.
-- REFLECT: Rephrase emotional state. Add deeper understanding. Optional: one soft question.
-- EXPLORE: Ask ONE meaningful, non-generic question relating directly to user situation.
-- GUIDE: Provide perspective. Help user think clearly. No direct instructions.
-- SUGGEST: Give 1 small, realistic, easy action. No overwhelming advice.
+ACTION ENFORCEMENT:
+- EMPATHIZE: Validate emotion. No advice. No question.
+- REFLECT: Rephrase feeling. Add depth. Optional 1 soft question.
+- EXPLORE: Ask 1 meaningful, specific question. No generic questions.
+- GUIDE: Provide perspective. No direct instructions.
+- SUGGEST: Provide 1 small, realistic step.
 
-EVENT HANDLING:
-- relationship_pain: Acknowledge betrayal and emotional impact specifically.
-- loneliness: Emphasize presence and connection.
-- anxiety: Use calm tone, reduce intensity.
+USER TYPE ADAPTATION:
+- Venting: prioritize listening, minimal questions.
+- Confused: gentle clarification, help structure thoughts.
+- Solution-seeker: 1 clear, simple action.
+
+RESPONSE CONSTRAINTS:
+- 2 to 4 lines only. Natural human tone.
+- NO repetition. NO robotic phrasing.
+- Each response MUST add new value or perspective.
     `;
 
-    if (isUserRepeating) {
-      baseSystemPrompt += `\nUSER LOOP: User is repeating. Go deeper, shift angle, do NOT repeat same response.`;
-    }
-
-    // 3. GENERATION LOOP
+    // 3. AUTO-REWRITE LOOP
     let reply = "";
     let attempts = 0;
     const MAX_ATTEMPTS = 2;
 
     while (attempts <= MAX_ATTEMPTS) {
-      let currentSystemPrompt = baseSystemPrompt;
+      let currentPrompt = systemPrompt;
       if (attempts > 0) {
-        currentSystemPrompt += `\nREWRITE: Your last attempt was too similar. Change structure, tone, and approach COMPLETELY. Move the conversation forward.`;
+        currentPrompt += "\nCRITICAL: Your last attempt was repetitive or made assumptions. Rewrite accurately without assumptions.";
       }
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -129,37 +148,35 @@ EVENT HANDLING:
         body: JSON.stringify({
           model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
           messages: [
-            { role: "system", content: currentSystemPrompt },
+            { role: "system", content: currentPrompt },
             ...history,
             { role: "user", content: user_input }
           ],
-          temperature: 0.8
+          temperature: 0.7
         })
       });
 
       const data = await response.json();
       if (!response.ok) {
-        reply = "I'm right here with you. I'm having a little trouble responding right now, but I'm still listening.";
+        reply = "I want to respond carefully to what you shared… could you tell me a little more about what feels most important right now?";
         break;
       }
 
       reply = data.choices?.[0]?.message?.content || "";
 
-      // Semantic & Loop check
-      const isTooSimilar = history
-        .filter((m: any) => m.role === "assistant")
-        .slice(-3)
-        .some((prev: any) => getSimilarity(reply, prev.content) > 0.75);
-
-      if (!isTooSimilar && !containsBannedRepeatedly(reply, history)) {
+      if (validateResponse(reply, history)) {
         break;
       }
       attempts++;
     }
 
+    if (attempts > MAX_ATTEMPTS) {
+      reply = "I'm reflecting on everything you've shared. It feels like there's a lot underneath this... I'm here to listen as you navigate it.";
+    }
+
     return new Response(JSON.stringify({ reply }), { status: 200 });
 
   } catch (err) {
-    return new Response(JSON.stringify({ reply: "I'm here. Tell me more about what's on your mind." }), { status: 200 });
+    return new Response(JSON.stringify({ reply: "I'm listening. Tell me more about what's on your mind." }), { status: 200 });
   }
 }
