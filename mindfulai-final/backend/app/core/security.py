@@ -9,17 +9,26 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.database import get_db
 
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
+
 oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-
+# We are using bcrypt directly because passlib 1.7.4 has a known crash bug on Vercel
 def hash_password(password: str) -> str:
-    # Bcrypt has a 72-character limit. Truncate safely.
-    return pwd.hash(password[:71])
+    salt = bcrypt.gensalt()
+    # Truncate to 72 bytes (bcrypt limit) and encode
+    pwd_bytes = password.encode('utf-8')[:72]
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd.verify(plain[:71], hashed)
+    try:
+        plain_bytes = plain.encode('utf-8')[:72]
+        hashed_bytes = hashed.encode('utf-8')
+        return bcrypt.checkpw(plain_bytes, hashed_bytes)
+    except Exception:
+        return False
 
 
 def create_token(user_id: int) -> str:
