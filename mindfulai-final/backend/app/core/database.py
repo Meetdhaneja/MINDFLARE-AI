@@ -42,12 +42,13 @@ def _create_engine():
         log.warning("Using SQLite. Switch to PostgreSQL for production.")
         return engine
 
-    log.info(f"Attempting PostgreSQL connection to {url.host}")
+    log.info(f"Attempting PostgreSQL connection to host: {url.host}")
     
     # Add SSL context for PostgreSQL (required for Neon)
     connect_args = {}
-    if "neon.tech" in str(url.host):
+    if url.host and "neon.tech" in str(url.host):
         connect_args["ssl"] = True
+        log.info("SSL enabled for Neon connection")
 
     return create_async_engine(
         url_str,
