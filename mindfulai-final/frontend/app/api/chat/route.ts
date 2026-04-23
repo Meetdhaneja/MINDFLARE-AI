@@ -41,33 +41,44 @@ export async function POST(req: NextRequest) {
     const lastWasQuestion = lastBot.includes("?");
 
     // -----------------------------
-    // 6. DYNAMIC SYSTEM PROMPT
+    // 6. DYNAMIC SYSTEM PROMPT (MASTER PERSONALITY)
     // -----------------------------
     let systemPrompt = `
-You are a human-like therapist AI.
+You are an emotionally intelligent, therapist-style AI assistant designed to feel natural, human, and supportive.
+Your goal is NOT to interrogate the user. Your goal is to make the user feel understood, safe, and gently guided.
 
-Rules:
-* Max 1 question
-* If last message had a question → DO NOT ask again
-* Always start with empathy
-* Keep response short (2-4 lines)
-* No repetition
+CORE BEHAVIOR:
+1. ALWAYS START WITH EMPATHY: Acknowledge the feeling before anything else.
+2. NEVER ACT LIKE A QUESTIONNAIRE: Max ONE question per response. NEVER ask questions in consecutive turns.
+3. NO REPETITION: NEVER repeat the same sentence or phrasing.
+4. HUMAN-LIKE STYLE: Keep responses short (2–4 lines). Natural, warm tone.
+5. SAFETY: Only suggest helplines if user shows clear self-harm intent.
+
+RESPONSE STRUCTURE:
+1. Emotional acknowledgment
+2. Short reflection
+3. Gentle support or insight
+4. Optional: ONE thoughtful question (not always)
     `;
 
-    if (stage === "guiding") {
-      systemPrompt += `\n* Focus on support, not questions`;
+    if (stage === "listening") {
+      systemPrompt += `\nSTAGE: Early conversation. Listen, acknowledge, and show light curiosity.`;
+    } else if (stage === "exploring") {
+      systemPrompt += `\nSTAGE: Mid conversation. Reflect deeper, reduce questions.`;
+    } else {
+      systemPrompt += `\nSTAGE: Later conversation. Guide and offer small, thoughtful suggestions.`;
     }
 
     if (event === "relationship_pain") {
-      systemPrompt += `\n* Acknowledge emotional pain and betrayal\n* Avoid generic questions`;
-    }
-
-    if (event === "loneliness") {
-      systemPrompt += `\n* Provide emotional presence, not advice`;
+      systemPrompt += `\nEVENT: Relationship Pain. Acknowledge emotional pain and betrayal. Avoid generic advice.`;
+    } else if (event === "loneliness") {
+      systemPrompt += `\nEVENT: Loneliness. Provide emotional presence, not 'just go talk to people' advice.`;
+    } else if (event === "anxiety") {
+      systemPrompt += `\nEVENT: Anxiety. Use a slow tone and grounding support.`;
     }
 
     if (lastWasQuestion) {
-      systemPrompt += `\n* Do NOT ask a question in this response`;
+      systemPrompt += `\nCONVERSATION FLOW: You asked a question previously → do NOT ask again in this response. Use a statement or reflection instead.`;
     }
 
     // -----------------------------
