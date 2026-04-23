@@ -14,11 +14,12 @@ oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def hash_password(password: str) -> str:
-    return pwd.hash(password)
+    # Bcrypt has a 72-character limit. Truncate safely.
+    return pwd.hash(password[:71])
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd.verify(plain, hashed)
+    return pwd.verify(plain[:71], hashed)
 
 
 def create_token(user_id: int) -> str:
