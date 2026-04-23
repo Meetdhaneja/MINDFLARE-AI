@@ -184,8 +184,10 @@ Make the user feel: understood, not judged, not interrogated, and gently guided.
     def build_system_prompt(self, emotion: str, flow_stage: str, turn_count: int,
                            memory_context: Dict, recent_hashes: List[str],
                            tone: str = "therapeutic",
-                           user_message: str = "", situation: str = "") -> str:
-        """Build multi-layer system prompt with memory, flow stage, and tone"""
+                           user_message: str = "", situation: str = "",
+                           event: Optional[str] = None,
+                           last_bot_message: str = "") -> str:
+        """Build multi-layer system prompt with event awareness and anti-loop logic"""
         prompt_parts = []
 
         # Layer 1: System Core
@@ -194,34 +196,38 @@ Make the user feel: understood, not judged, not interrogated, and gently guided.
         # Layer 2: Safety Rules
         prompt_parts.append(self._build_safety_rules())
 
-        # Layer 3: User Context (from memory layers)
+        # Layer 3: User Context
         user_context = self._build_user_context(memory_context)
         if user_context:
             prompt_parts.append(f"USER CONTEXT:\n{user_context}")
 
-        # Layer 4: Current State (flow stage + emotion)
+        # Layer 4: Current State
         prompt_parts.append(self._build_current_state(emotion, flow_stage, turn_count))
 
-        # Layer 5: Style Instruction (with tone)
+        # Layer 5: Style Instruction
         prompt_parts.append(self._build_style_instruction(tone))
 
-        # Layer 6: Few-Shot Examples from RAG
-        if user_message:
-            try:
-                few_shot_prompt = rag_service.get_few_shot_prompt(
-                    user_message, emotion, situation, k=2
-                )
-                if few_shot_prompt:
-                    prompt_parts.append(few_shot_prompt)
-            except:
-                pass  # RAG optional
+        # Layer 6: Dynamic Intelligence (Events & Flow)
+        intelligence = []
+        if event == "relationship_pain":
+            intelligence.append("EVENT: Relationship Pain. MUST acknowledge betrayal/emotional pain. Avoid generic 'stay strong' advice.")
+        elif event == "loneliness":
+            intelligence.append("EVENT: Loneliness. MUST provide deep emotional presence. Avoid 'just go talk to people' advice.")
+        elif event == "anxiety":
+            intelligence.append("EVENT: Anxiety. MUST be grounding and slow. Use statements that make them feel safe.")
 
-        # Layer 7: Anti-repetition constraint
+        if flow_stage == "guiding":
+            intelligence.append("STAGE: Guiding. Focus on support and gentle insight, not interrogation. MAX 1 question.")
+
+        if "?" in last_bot_message:
+            intelligence.append("CONVERSATION FLOW: You asked a question in the last turn. Do NOT ask a question in this response. Use a statement or reflection instead.")
+
+        if intelligence:
+            prompt_parts.append("DYNAMIC CONSTRAINTS:\n" + "\n".join(intelligence))
+
+        # Layer 7: Anti-repetition
         if recent_hashes:
-            prompt_parts.append(f"""
-ANTI-REPETITION CONSTRAINT:
-Your last responses used these opening patterns: {', '.join(recent_hashes[-3:])}
-Use completely different wording, structure, and opening this time.""")
+            prompt_parts.append(f"ANTI-REPETITION: Do NOT use openings or phrasing similar to your previous responses.")
 
         return "\n\n".join(prompt_parts)
 

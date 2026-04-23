@@ -89,53 +89,32 @@ async def call_local(messages: List[Dict]) -> str:
     return "".join(chunks).strip()
 
 async def generate(messages: List[Dict]) -> str:
-    """Non-streaming generation"""
-    if settings.GROQ_API_KEY:
-        try:
-            return await call_groq(messages)
-        except Exception as e:
-            log.warning(f"Groq unavailable, trying local: {e}")
-            try:
-                return await call_local(messages)
-            except Exception as e2:
-                log.warning(f"Local also unavailable: {e2}")
-                return "I'm here to listen and support you. This is a demo response since the AI service is currently unavailable. Please check your API configuration for full functionality."
-    else:
-        try:
-            return await call_local(messages)
-        except Exception as e:
-            log.warning(f"Local unavailable: {e}")
-            return "I'm here to listen and support you. This is a demo response since no AI service is configured. Please set up Groq API or LM Studio for full functionality."
+    """Non-streaming generation with 8s timeout and Elite Fallback"""
+    fallback = "I'm here with you. I'm having a bit of trouble responding right now, but I still want to understand—can you tell me a little more?"
+    
+    try:
+        # Strict 8s timeout for production stability
+        return await asyncio.wait_for(call_groq(messages) if settings.GROQ_API_KEY else call_local(messages), timeout=8.0)
+    except Exception as e:
+        log.warning(f"LLM Generation failed or timed out: {e}")
+        return fallback
 
 async def generate_stream(messages: List[Dict]) -> AsyncGenerator[str, None]:
-    """Streaming generation"""
-    if settings.GROQ_API_KEY:
-        try:
+    """Streaming generation with Elite Fallback on failure"""
+    fallback = "I'm here with you. I'm having a bit of trouble responding right now, but I still want to understand—can you tell me a little more?"
+    
+    try:
+        if settings.GROQ_API_KEY:
             async for chunk in call_groq_stream(messages):
                 yield chunk
-        except Exception as e:
-            log.warning(f"Groq streaming unavailable, trying local: {e}")
-            try:
-                async for chunk in call_local_stream(messages):
-                    yield chunk
-            except Exception as e2:
-                log.warning(f"Local streaming also unavailable: {e2}")
-                # Fallback: provide a demo response for development
-                fallback_response = "I'm here to listen and support you. This is a demo response since the AI service is currently unavailable. Please check your API configuration for full functionality."
-                for word in fallback_response.split():
-                    yield word + " "
-                    await asyncio.sleep(0.1)  # Simulate streaming delay
-    else:
-        try:
+        else:
             async for chunk in call_local_stream(messages):
                 yield chunk
-        except Exception as e:
-            log.warning(f"Local streaming unavailable: {e}")
-            # Fallback: provide a demo response for development
-            fallback_response = "I'm here to listen and support you. This is a demo response since no AI service is configured. Please set up Groq API or LM Studio for full functionality."
-            for word in fallback_response.split():
-                yield word + " "
-                await asyncio.sleep(0.1)  # Simulate streaming delay
+    except Exception as e:
+        log.warning(f"LLM Streaming failed: {e}")
+        for word in fallback.split():
+            yield word + " "
+            await asyncio.sleep(0.05)
 
 def active_provider() -> str:
     return "groq" if settings.GROQ_API_KEY else "local"

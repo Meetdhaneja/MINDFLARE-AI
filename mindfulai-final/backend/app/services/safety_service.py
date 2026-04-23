@@ -108,7 +108,6 @@ async def assess_risk(text: str, user_id: int = None, db: AsyncSession = None, e
             "level": "medium", 
             "override": False, 
             "safe": True, 
-            "addon": "\n\nIf this feeling persists, please reach out to iCall at 9152987821.",
             "risk_score": risk_score
         }
 

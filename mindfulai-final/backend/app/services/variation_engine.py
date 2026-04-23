@@ -159,12 +159,41 @@ def semantic_similarity(text1: str, text2: str) -> float:
     """Calculate semantic similarity between two texts"""
     return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
 
-def is_semantically_repetitive(text: str, recent_responses: List[str], threshold: float = 0.7) -> bool:
-    """Check if text is semantically similar to recent responses"""
-    for recent in recent_responses[-5:]:  # Check last 5 responses
+def is_semantically_repetitive(text: str, history: List[Dict], threshold: float = 0.80) -> bool:
+    """Check if text is semantically similar to last 3 bot messages"""
+    bot_msgs = [m["content"] for m in reversed(history) if m["role"] == "assistant"][:3]
+    for recent in bot_msgs:
         if semantic_similarity(text, recent) > threshold:
             return True
     return False
+
+def enforce_response_rules(response: str, history: List[Dict]) -> str:
+    """Production rules: Remove repeats, enforce 1 question max, ensure empathy."""
+    # 1. Remove repeated sentences within the same response
+    sentences = re.split(r"(?<=[.!?…])\s+", response.strip())
+    unique_sentences = []
+    seen = set()
+    for s in sentences:
+        s_clean = s.strip().lower()
+        if s_clean not in seen:
+            unique_sentences.append(s)
+            seen.add(s_clean)
+    response = " ".join(unique_sentences)
+
+    # 2. Enforce Max 1 Question
+    if response.count("?") > 1:
+        parts = response.split("?")
+        # Keep the first question, convert others to periods
+        response = parts[0] + "?" + ".".join(parts[1:]).replace("..", ".")
+
+    # 3. Ensure Empathy Prepend (If none detected in first 10 words)
+    empathy_words = ["sounds", "understand", "feel", "pained", "heavy", "notice", "hear"]
+    first_few = response.lower().split()[:10]
+    if not any(w in first_few for w in empathy_words):
+        openers = ["I hear you.", "That sounds really heavy.", "I can see how much that hurts.", "I'm here with you."]
+        response = random.choice(openers) + " " + response
+
+    return response.strip()
 
 def dedup_starters(text: str) -> str:
     overused = ["it sounds like","it seems like","it looks like","it appears"]

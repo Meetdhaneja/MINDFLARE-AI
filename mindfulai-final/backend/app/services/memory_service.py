@@ -22,12 +22,12 @@ TOPICS = {
 
 class MemoryLayer:
     def __init__(self):
-        self.short_term_window = 5
+        self.short_term_window = 12
         self.long_term_window = 50
         self.emotion_trend_window = 10
 
     async def get_short_term_memory(self, user_id: int, session_id: str, db: AsyncSession) -> List[Dict]:
-        """Last 5 messages for immediate context"""
+        """Last 12 messages for production-grade context"""
         r = await db.execute(
             select(Message)
             .where(Message.user_id == user_id, Message.session_id == session_id)
