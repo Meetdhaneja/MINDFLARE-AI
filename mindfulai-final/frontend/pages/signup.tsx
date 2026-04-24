@@ -2,6 +2,8 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Brain, Mail, Lock, User, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react'
 import { api, saveAuth } from '@/lib/api'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -26,10 +28,8 @@ export default function Signup() {
       saveAuth(data)
       router.push('/')
     } catch (err: any) {
-      // Handle FastAPI/Pydantic validation errors
       const errors = err.response?.data?.detail
       if (Array.isArray(errors)) {
-        // Extract error messages from validation errors
         const messages = errors.map((error: any) => error.msg || error.message).join('. ')
         setError(messages || 'Please check your input and try again')
       } else {
@@ -40,61 +40,140 @@ export default function Signup() {
     }
   }
 
-  const field = (label: string, key: string, type = 'text', hint = '') => (
-    <div>
-      <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>{label}</label>
-      <input className="input" type={type} value={(form as any)[key]}
-        onChange={set(key)} placeholder={hint} required />
-    </div>
-  )
-
   return (
     <>
-      <Head><title>Create Account — MindfulAI</title></Head>
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', padding: '20px',
-        background: 'radial-gradient(ellipse at 70% 50%, rgba(91,142,240,0.08) 0%, transparent 60%), var(--bg)',
-      }}>
-        <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '36px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>
-            <div style={{
-              width: '40px', height: '40px', borderRadius: '12px',
-              background: 'linear-gradient(135deg, #5b8ef0, #9b6ef0)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px'
-            }}>🧠</div>
-            <div>
-              <div style={{ fontSize: '18px', fontWeight: 600 }}>MindfulAI</div>
-              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>mental health companion</div>
+      <Head><title>Create Identity — MindFlare AI</title></Head>
+      <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+        {/* Sanctuary Aura Background */}
+        <div className="aura-bg" />
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+          className="w-full max-w-[460px] glass-card p-10 shadow-2xl relative z-10"
+        >
+          {/* Logo Section */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-4">
+              <Brain className="text-white" size={28} />
             </div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">MindFlare AI</h1>
+            <p className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.3em] mt-1 text-center">Neural Sanctuary Identity</p>
           </div>
 
-          <div style={{ fontSize: '20px', fontWeight: 600, marginBottom: '6px' }}>Create your account</div>
-          <div style={{ fontSize: '13px', color: 'var(--t2)', marginBottom: '24px' }}>
-            Your conversations are private and never shared
+          <div className="text-center mb-8">
+            <h2 className="text-lg font-semibold text-white mb-2">Begin Your Journey</h2>
+            <p className="text-sm text-slate-400">Join a secure, private space for your mind</p>
           </div>
 
-          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {error && (
-              <div style={{
-                padding: '10px 14px', background: 'rgba(239,68,68,0.08)',
-                border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px',
-                color: '#fb7185', fontSize: '13px'
-              }}>{error}</div>
-            )}
-            {field('Username', 'username', 'text', 'yourname')}
-            {field('Email', 'email', 'email', 'you@example.com')}
-            {field('Password', 'password', 'password', 'Minimum 8 characters')}
-            <button className="btn" type="submit" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
+          <form onSubmit={submit} className="space-y-5">
+            <AnimatePresence>
+              {error && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-medium"
+                >
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-2">
+                <User size={12} className="text-indigo-400" />
+                Public Identity (Username)
+              </label>
+              <input 
+                className="premium-input" 
+                type="text" 
+                value={form.username}
+                onChange={set('username')} 
+                placeholder="How should I call you?" 
+                required 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-2">
+                <Mail size={12} className="text-indigo-400" />
+                Communication Node (Email)
+              </label>
+              <input 
+                className="premium-input" 
+                type="email" 
+                value={form.email}
+                onChange={set('email')} 
+                placeholder="name@example.com" 
+                required 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-2">
+                <Lock size={12} className="text-indigo-400" />
+                Security Pattern (Password)
+              </label>
+              <input 
+                className="premium-input" 
+                type="password" 
+                value={form.password}
+                onChange={set('password')} 
+                placeholder="Min. 8 characters" 
+                required 
+              />
+            </div>
+
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="premium-btn w-full group" 
+              type="submit" 
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-bounce" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-bounce [animation-delay:0.4s]" />
+                </div>
+              ) : (
+                <>
+                  Create Identity
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </motion.button>
           </form>
 
-          <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--t2)' }}>
-            Already have an account?{' '}
-            <Link href="/login" style={{ color: 'var(--acc)', textDecoration: 'none' }}>Sign in</Link>
+          <div className="mt-8 pt-8 border-t border-white/5 text-center">
+            <p className="text-xs text-slate-500">
+              Already have an identity?{' '}
+              <Link href="/login" className="text-indigo-400 font-bold hover:text-indigo-300 transition-colors ml-1">
+                Enter Sanctuary
+              </Link>
+            </p>
           </div>
-        </div>
+
+          {/* Trust Indicators */}
+          <div className="mt-8 flex items-center justify-between px-2">
+             <div className="flex flex-col items-center gap-1.5">
+               <ShieldCheck size={16} className="text-emerald-500/50" />
+               <span className="text-[8px] text-slate-600 font-bold uppercase tracking-widest text-center">Encrypted<br/>End-to-End</span>
+             </div>
+             <div className="w-px h-6 bg-white/5" />
+             <div className="flex flex-col items-center gap-1.5">
+               <Sparkles size={16} className="text-indigo-500/50" />
+               <span className="text-[8px] text-slate-600 font-bold uppercase tracking-widest text-center">Neural<br/>Optimized</span>
+             </div>
+             <div className="w-px h-6 bg-white/5" />
+             <div className="flex flex-col items-center gap-1.5">
+               <Brain size={16} className="text-purple-500/50" />
+               <span className="text-[8px] text-slate-600 font-bold uppercase tracking-widest text-center">Privacy<br/>Focused</span>
+             </div>
+          </div>
+        </motion.div>
       </div>
     </>
   )
