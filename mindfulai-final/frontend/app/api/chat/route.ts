@@ -1,5 +1,11 @@
 import { NextRequest } from "next/server";
 
+interface ChatMessage {
+  role: string;
+  content: string;
+  emotion?: string;
+}
+
 // -----------------------------
 // HELPER: SEMANTIC SIMILARITY
 // -----------------------------
@@ -27,7 +33,7 @@ function detectMomentum(text: string) {
   return "High";
 }
 
-function detectTrend(history: any[], currentEmotion: string) {
+function detectTrend(history: ChatMessage[], currentEmotion: string) {
   const lastEmotions = history.filter(m => m.emotion).slice(-3).map(m => m.emotion);
   if (lastEmotions.length < 2) return "Stable";
   return lastEmotions.every(e => e === currentEmotion) ? "Stable" : "Shifting";
@@ -36,7 +42,7 @@ function detectTrend(history: any[], currentEmotion: string) {
 // -----------------------------
 // HELPER: REPETITION & VALIDATION
 // -----------------------------
-function containsBannedRepeatedly(response: string, history: any[]) {
+function containsBannedRepeatedly(response: string, history: ChatMessage[]) {
   const words = ["always", "never", "definitely", "everyone", "i recommend", "you should"];
   const resLower = response.toLowerCase();
   
@@ -44,10 +50,10 @@ function containsBannedRepeatedly(response: string, history: any[]) {
   if (!hasBanned) return false;
 
   const prevTurns = history.filter(m => m.role === "assistant").slice(-3).map(m => m.content.toLowerCase());
-  return prevTurns.some(prev => words.some(w => prev.includes(w) && resLower.includes(w)));
+  return prevTurns.some((prev: string) => words.some(w => prev.includes(w) && resLower.includes(w)));
 }
 
-function validateResponse(response: string, history: any[]) {
+function validateResponse(response: string, history: ChatMessage[]) {
   const resLower = response.toLowerCase();
   const bannedPatterns = ["i am sorry", "as an ai", "my apologies"]; 
   
@@ -58,8 +64,8 @@ function validateResponse(response: string, history: any[]) {
 // -----------------------------
 // HELPER: USER PROFILE DETECTOR
 // -----------------------------
-function detectProfile(history: any[]) {
-  const t = history.map(m => m.content.toLowerCase()).join(" ");
+function detectProfile(history: ChatMessage[]) {
+  const t = history.map((m: ChatMessage) => m.content.toLowerCase()).join(" ");
   return {
     personality: t.includes("alone") || t.includes("quiet") ? "Introvert" : "Extrovert",
     coping_style: t.includes("fix") || t.includes("do") ? "Problem-solver" : "Avoidant/Emotional",
@@ -95,8 +101,8 @@ export async function POST(req: NextRequest) {
     
     // Extract past suggestions to avoid repetition
     const pastSuggestions = history
-      .filter(m => m.role === "assistant")
-      .map(m => m.content.toLowerCase());
+      .filter((m: ChatMessage) => m.role === "assistant")
+      .map((m: ChatMessage) => m.content.toLowerCase());
 
     let emotion = "neutral";
     if (text.includes("sad") || text.includes("lonely") || text.includes("hurt")) emotion = "sadness";
@@ -120,7 +126,7 @@ export async function POST(req: NextRequest) {
 
     let suggestion = getSuggestion(emotion, profile, turnCount);
     // Anti-Repetition for Suggestions
-    if (suggestion && pastSuggestions.some(prev => prev.includes(suggestion!.split("...")[0]))) {
+    if (suggestion && pastSuggestions.some((prev: string) => prev.includes(suggestion!.split("...")[0]))) {
       suggestion = "maybe just taking a deep breath and noticing one thing you can see right now could help.";
     }
 
@@ -158,7 +164,7 @@ STRICT RESPONSE STRUCTURE (MANDATORY):
 
 STRICT ANTI-HALLUCINATION & ANTI-REPETITION:
 - DO NOT assume facts. Use "it seems like..." or "it might be..."
-- DO NOT repeat phrases from previous messages: ${history.slice(-3).map(m => m.content).join(" | ")}
+- DO NOT repeat phrases from previous messages: ${history.slice(-3).map((m: ChatMessage) => m.content).join(" | ")}
 - NEVER use generic advice like "stay positive".
 
 GOLD STANDARD EXAMPLES (FOLLOW THIS TONE):
@@ -203,9 +209,9 @@ Assistant: "I can feel the tension in what you're describing. Like you're stretc
       reply = data.choices?.[0]?.message?.content || "";
 
       const isTooSimilar = history
-        .filter((m: any) => m.role === "assistant")
+        .filter((m: ChatMessage) => m.role === "assistant")
         .slice(-5)
-        .some((prev: any) => getSimilarity(reply, prev.content) > 0.5);
+        .some((prev: ChatMessage) => getSimilarity(reply, prev.content) > 0.5);
 
       if (!isTooSimilar && !containsBannedRepeatedly(reply, history) && validateResponse(reply, history)) {
         break;
