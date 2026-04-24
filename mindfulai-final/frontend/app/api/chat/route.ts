@@ -34,22 +34,30 @@ function detectTrend(history: any[], currentEmotion: string) {
 }
 
 // -----------------------------
-// RESPONSE VALIDATION
+// HELPER: REPETITION & VALIDATION
 // -----------------------------
-function validateResponse(response: string, history: any[]) {
+function containsBannedRepeatedly(response: string, history: any[]) {
+  const words = ["always", "never", "definitely", "everyone", "i recommend", "you should"];
   const resLower = response.toLowerCase();
-  const bannedPatterns = ["always", "never", "definitely", "everyone", "i recommend", "you should"];
   
-  if (bannedPatterns.some(p => resLower.includes(p))) return false;
-  
-  const isRepetitive = history
-    .filter(m => m.role === "assistant")
-    .slice(-3)
-    .some(prev => getSimilarity(response, prev.content) > 0.7);
-    
-  return !isRepetitive;
+  const hasBanned = words.some(w => resLower.includes(w));
+  if (!hasBanned) return false;
+
+  const prevTurns = history.filter(m => m.role === "assistant").slice(-3).map(m => m.content.toLowerCase());
+  return prevTurns.some(prev => words.some(w => prev.includes(w) && resLower.includes(w)));
 }
 
+function validateResponse(response: string, history: any[]) {
+  const resLower = response.toLowerCase();
+  const bannedPatterns = ["i am sorry", "as an ai", "my apologies"]; 
+  
+  if (bannedPatterns.some(p => resLower.includes(p))) return false;
+  return true;
+}
+
+// -----------------------------
+// MAIN ORCHESTRATOR
+// -----------------------------
 export async function POST(req: NextRequest) {
   try {
     const { messages, user_input } = await req.json();
@@ -58,29 +66,18 @@ export async function POST(req: NextRequest) {
     const history = messages.slice(-12);
     const text = user_input.toLowerCase();
     
-    // Emotion
     let emotion = "neutral";
     if (text.includes("sad") || text.includes("lonely")) emotion = "sadness";
     if (text.includes("anxious") || text.includes("panic")) emotion = "anxiety";
 
-    // Trend
     const trend = detectTrend(history, emotion);
-    
-    // User Type
     const userType = detectUserType(user_input);
-    
-    // Depth
     const turnCount = history.length;
     const depth = turnCount <= 2 ? 1 : turnCount <= 5 ? 2 : 3;
-    
-    // Momentum
     const momentum = detectMomentum(user_input);
-    
-    // Silence
     const lastBotWasQ = (history[history.length - 1]?.content || "").includes("?");
     const silence = (momentum === "Low" && lastBotWasQ);
 
-    // Action Logic
     const stage = turnCount <= 2 ? "listening" : turnCount <= 5 ? "exploring" : "guiding";
     let action = "EMPATHIZE";
     if (stage === "listening") action = turnCount === 0 ? "EMPATHIZE" : "REFLECT";
@@ -173,7 +170,7 @@ IF YOU ARE STUCK, SHIFT THE ANGLE ENTIRELY.
             ...history,
             { role: "user", content: user_input }
           ],
-          temperature: 0.9 // Increased temperature for more variety
+          temperature: 0.9 
         })
       });
 
@@ -185,13 +182,12 @@ IF YOU ARE STUCK, SHIFT THE ANGLE ENTIRELY.
 
       reply = data.choices?.[0]?.message?.content || "";
 
-      // Semantic & Loop check (Lower threshold = stricter)
       const isTooSimilar = history
         .filter((m: any) => m.role === "assistant")
-        .slice(-5) // Check back further
+        .slice(-5)
         .some((prev: any) => getSimilarity(reply, prev.content) > 0.5);
 
-      if (!isTooSimilar && !containsBannedRepeatedly(reply, history)) {
+      if (!isTooSimilar && !containsBannedRepeatedly(reply, history) && validateResponse(reply, history)) {
         break;
       }
       attempts++;
@@ -206,7 +202,7 @@ IF YOU ARE STUCK, SHIFT THE ANGLE ENTIRELY.
       emotion,
       flow: stage,
       flow_step: turnCount,
-      safe: true // Assuming safe if no crisis detected
+      safe: true 
     }), { status: 200 });
 
   } catch (err) {
