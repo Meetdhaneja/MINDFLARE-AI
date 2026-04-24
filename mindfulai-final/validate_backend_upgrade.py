@@ -7,6 +7,9 @@ Verifies all intelligence engines are working correctly
 import sys
 from pathlib import Path
 
+# Fix Windows terminal Unicode encoding
+sys.stdout.reconfigure(encoding='utf-8')
+
 sys.path.insert(0, str(Path(__file__).parent / "backend"))
 
 print("\n" + "="*70)
@@ -54,9 +57,9 @@ except Exception as e:
 print("\n4️⃣  VARIATION ENGINE TEST")
 print("-" * 70)
 try:
-    from app.services.variation_engine import (
-        BANNED_PHRASES, TONE_MODES, select_tone, check_banned_phrases
-    )
+    from app.services.variation_engine import (  # type: ignore
+        BANNED_PHRASES, TONE_MODES, select_tone, check_banned_phrases  # type: ignore
+    )  # type: ignore
     print(f"✅ Variation engine features:")
     print(f"   - Banned phrases: {len(BANNED_PHRASES)}")
     print(f"   - Tone modes: {', '.join(TONE_MODES.keys())}")
