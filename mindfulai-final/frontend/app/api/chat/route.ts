@@ -143,15 +143,21 @@ RESPONSE CONSTRAINTS:
 - Each response MUST add new value or perspective.
     `;
 
-    // 3. AUTO-REWRITE LOOP
+    // 3. GENERATION LOOP (STRENGTHENED)
     let reply = "";
     let attempts = 0;
-    const MAX_ATTEMPTS = 2;
+    const MAX_ATTEMPTS = 3;
 
     while (attempts <= MAX_ATTEMPTS) {
       let currentPrompt = systemPrompt;
       if (attempts > 0) {
-        currentPrompt += "\nCRITICAL: Your last attempt was repetitive or made assumptions. Rewrite accurately without assumptions.";
+        currentPrompt += `
+\nCRITICAL ERROR: YOU ARE REPEATING YOURSELF. 
+YOUR PREVIOUS ATTEMPT WAS TOO SIMILAR TO EARLIER RESPONSES.
+DO NOT USE THE SAME PHRASING. DO NOT USE THE SAME STRUCTURE.
+SAY SOMETHING COMPLETELY NEW AND MOVE THE CONVERSATION FORWARD.
+IF YOU ARE STUCK, SHIFT THE ANGLE ENTIRELY.
+`;
       }
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -167,26 +173,32 @@ RESPONSE CONSTRAINTS:
             ...history,
             { role: "user", content: user_input }
           ],
-          temperature: 0.7
+          temperature: 0.9 // Increased temperature for more variety
         })
       });
 
       const data = await response.json();
       if (!response.ok) {
-        reply = "I want to respond carefully to what you shared… could you tell me a little more about what feels most important right now?";
+        reply = "I'm reflecting on what you've shared. It feels like there's more depth here than I can grasp in a single moment... could you help me understand a different side of this?";
         break;
       }
 
       reply = data.choices?.[0]?.message?.content || "";
 
-      if (validateResponse(reply, history)) {
+      // Semantic & Loop check (Lower threshold = stricter)
+      const isTooSimilar = history
+        .filter((m: any) => m.role === "assistant")
+        .slice(-5) // Check back further
+        .some((prev: any) => getSimilarity(reply, prev.content) > 0.5);
+
+      if (!isTooSimilar && !containsBannedRepeatedly(reply, history)) {
         break;
       }
       attempts++;
     }
 
     if (attempts > MAX_ATTEMPTS) {
-      reply = "I'm reflecting on everything you've shared. It feels like there's a lot underneath this... I'm here to listen as you navigate it.";
+      reply = "I want to be careful not to repeat myself because I value what we're talking about. Let's look at this from a completely different angle—how is this affecting your daily peace right now?";
     }
 
     return new Response(JSON.stringify({ 
