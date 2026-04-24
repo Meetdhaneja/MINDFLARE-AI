@@ -1,87 +1,190 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
+
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 :root {
-  --bg: #0a0b0f;
-  --s1: #101218;
-  --s2: #161b26;
-  --s3: #1e2435;
-  --b1: rgba(255,255,255,0.06);
-  --b2: rgba(255,255,255,0.1);
-  --b3: rgba(255,255,255,0.16);
-  --t1: #eef0f6;
-  --t2: #8d96aa;
-  --t3: #4e5769;
-  --acc: #5b8ef0;
-  --acc2: #7fa4f5;
-  --acc-d: rgba(91,142,240,0.12);
+  /* Sanctuary Palette */
+  --bg-deep: #050608;
+  --bg-surface: rgba(13, 17, 23, 0.7);
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  
+  --accent: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.4);
+  --accent-soft: rgba(99, 102, 241, 0.1);
+  
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--t1);
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  min-height: 100vh;
 }
 
-/* scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--s3); border-radius: 2px; }
+/* --- THE SANCTUARY AURA --- */
+.aura-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 50%, #0f172a 0%, #050608 100%);
+  overflow: hidden;
+}
 
-/* input base */
-.input {
-  width: 100%;
-  padding: 10px 14px;
-  background: var(--s2);
-  border: 1px solid var(--b2);
+.aura-bg::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 70% 70%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+  animation: rotateAura 20s linear infinite;
+}
+
+@keyframes rotateAura {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* --- GLASSMORPHISM --- */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+}
+
+/* --- SCROLLBAR --- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
   border-radius: 10px;
-  color: var(--t1);
-  font-size: 14px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* --- PREMIUM INPUTS --- */
+.premium-input {
+  width: 100%;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  color: var(--text-primary);
+  font-size: 16px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.input:focus { border-color: var(--acc); }
-.input::placeholder { color: var(--t3); }
 
-/* btn */
-.btn {
-  padding: 10px 20px;
-  background: var(--acc);
-  color: #fff;
+.premium-input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 20px var(--accent-soft);
+}
+
+/* --- GLOW BUTTONS --- */
+.premium-btn {
+  padding: 14px 28px;
+  background: var(--accent);
+  color: white;
   border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: 18px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
-  width: 100%;
-}
-.btn:hover { background: var(--acc2); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* card */
-.card {
-  background: var(--s1);
-  border: 1px solid var(--b1);
-  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 15px var(--accent-glow);
 }
 
-/* fade-in */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+.premium-btn:hover {
+  transform: translateY(-2px);
+  background: #4f46e5;
+  box-shadow: 0 8px 25px var(--accent-glow);
 }
-.fade-up { animation: fadeUp 0.2s ease forwards; }
 
-/* bounce dots */
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); opacity: 0.4; }
-  50% { transform: translateY(-5px); opacity: 1; }
+.premium-btn:active {
+  transform: translateY(0);
 }
-.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--t3); animation: bounce 1.2s infinite; display: inline-block; }
-.dot:nth-child(2) { animation-delay: .2s; }
-.dot:nth-child(3) { animation-delay: .4s; }
+
+.premium-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* --- ANIMATIONS --- */
+.slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* --- TYPING INDICATOR --- */
+.typing-dot {
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulseDot 1.4s infinite;
+  opacity: 0.4;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.5); opacity: 1; }
+}

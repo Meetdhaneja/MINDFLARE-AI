@@ -1,4 +1,16 @@
 import React from 'react'
+import { motion } from 'framer-motion'
+import { 
+  Brain, 
+  Zap, 
+  Plus, 
+  CheckCircle2, 
+  AlertTriangle, 
+  LogOut, 
+  MessageSquare,
+  Activity,
+  Heart
+} from 'lucide-react'
 
 const STEP_LABELS = ['Validate', 'Explore', 'Identify', 'Guide', 'Suggest']
 const FLOW_DESC: Record<string, string> = {
@@ -28,8 +40,19 @@ interface Props {
   onLogout: () => void
 }
 
-export function Sidebar({ emotion, emotionEmoji, emotionColor, emotionScore,
-  flowType, flowStep, riskLevel, username, msgCount, onNewSession, onLogout }: Props) {
+export function Sidebar({ 
+  emotion, 
+  emotionEmoji, 
+  emotionColor, 
+  emotionScore,
+  flowType, 
+  flowStep, 
+  riskLevel, 
+  username, 
+  msgCount, 
+  onNewSession, 
+  onLogout 
+}: Props) {
 
   const RISK_COLORS: Record<string, string> = {
     low: '#2dd4bf', medium: '#fbbf24', high: '#f87171', crisis: '#ef4444'
@@ -37,140 +60,132 @@ export function Sidebar({ emotion, emotionEmoji, emotionColor, emotionScore,
   const riskColor = RISK_COLORS[riskLevel] || '#2dd4bf'
 
   return (
-    <aside style={{
-      width: '260px', flexShrink: 0, background: 'var(--s1)',
-      borderRight: '1px solid var(--b1)', display: 'flex',
-      flexDirection: 'column', height: '100vh', overflow: 'hidden',
-    }}>
-      {/* Logo */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--b1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <div style={{
-            width: '30px', height: '30px', borderRadius: '9px',
-            background: 'linear-gradient(135deg, #5b8ef0, #9b6ef0)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px',
-          }}>🧠</div>
+    <aside className="w-[280px] flex-shrink-0 glass border-r border-white/5 flex flex-col h-screen overflow-hidden">
+      {/* Header / Logo */}
+      <div className="p-6 border-b border-white/5">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <Brain className="text-white" size={20} />
+          </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 600 }}>MindfulAI</div>
-            <div style={{ fontSize: '10px', color: 'var(--t3)', fontFamily: 'monospace' }}>v3.0 · groq + llama-3.1</div>
+            <h1 className="text-base font-bold text-white tracking-tight">MindFlare AI</h1>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Zap size={10} className="text-indigo-400" />
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">v4.0 Elite Brain</span>
+            </div>
           </div>
         </div>
 
-        {/* Emotion widget */}
-        <div style={{ padding: '12px', background: 'var(--s2)', borderRadius: '12px', border: '1px solid var(--b1)' }}>
-          <div style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--t3)',
-            textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
-            Emotion
+        {/* Emotion Widget */}
+        <div className="p-4 glass-card bg-white/[0.02] border-white/5">
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+            <Activity size={12} />
+            Emotional State
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '20px' }}>{emotionEmoji}</span>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 500, color: emotionColor, textTransform: 'capitalize' }}>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-2xl drop-shadow-md">{emotionEmoji}</span>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-white capitalize" style={{ color: emotionColor }}>
                 {emotion}
               </div>
-              <div style={{ fontSize: '10px', color: 'var(--t3)', fontFamily: 'monospace' }}>
-                {Math.round(emotionScore * 100)}% confidence
+              <div className="text-[10px] text-slate-500 font-mono">
+                {Math.round(emotionScore * 100)}% accuracy
               </div>
             </div>
           </div>
-          <div style={{ height: '3px', background: 'var(--s3)', borderRadius: '2px', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${Math.round(emotionScore * 100)}%`,
-              background: emotionColor, borderRadius: '2px', transition: 'width 0.5s' }} />
+          <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.round(emotionScore * 100)}%` }}
+              className="h-full rounded-full"
+              style={{ backgroundColor: emotionColor, boxShadow: `0 0 10px ${emotionColor}44` }}
+            />
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <div style={{ padding: '12px 10px', flex: 1, overflowY: 'auto' }}>
-        <div style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--t3)',
-          textTransform: 'uppercase', letterSpacing: '0.08em', padding: '8px 8px 4px' }}>
-          Session
+      {/* Navigation */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div className="space-y-2">
+          <div className="px-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Actions</div>
+          <button 
+            onClick={onNewSession}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-all group"
+          >
+            <Plus size={18} className="text-indigo-400 group-hover:rotate-90 transition-transform" />
+            New Session
+          </button>
         </div>
 
-        {/* New session */}
-        <button onClick={onNewSession} style={{
-          display: 'flex', alignItems: 'center', gap: '9px', width: '100%',
-          padding: '8px 10px', borderRadius: '8px', cursor: 'pointer',
-          fontSize: '13px', color: 'var(--t2)', border: '1px solid transparent',
-          background: 'none', textAlign: 'left', transition: 'all 0.12s',
-        }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--s2)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-          <span>✨</span> New Session
-        </button>
-
-        {/* Flow steps */}
-        <div style={{ margin: '12px 0', padding: '12px', background: 'var(--s2)',
-          borderRadius: '12px', border: '1px solid var(--b1)' }}>
-          <div style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--t3)',
-            textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-            Flow · <span style={{ color: 'var(--acc)' }}>{flowType}</span>
+        {/* Conversation Flow */}
+        <div className="p-4 glass-card bg-indigo-500/[0.02] border-indigo-500/10">
+          <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <Heart size={12} />
+            Therapeutic Flow
           </div>
-
-          {STEP_LABELS.map((label, i) => {
-            const done = i < flowStep
-            const active = i === flowStep
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '5px 0', fontSize: '12px',
-                color: active ? 'var(--t1)' : done ? 'var(--t2)' : 'var(--t3)' }}>
-                <div style={{
-                  width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '9px', fontFamily: 'monospace',
-                  background: active ? 'var(--acc)' : done ? 'var(--acc-d)' : 'transparent',
-                  border: active ? '1px solid var(--acc)' : done ? '1px solid rgba(91,142,240,0.3)' : '1px solid var(--b2)',
-                  color: active ? '#fff' : done ? 'var(--acc)' : 'var(--t3)',
-                }}>
-                  {done ? '✓' : i + 1}
+          
+          <div className="space-y-3">
+            {STEP_LABELS.map((label, i) => {
+              const isDone = i < flowStep
+              const isActive = i === flowStep
+              return (
+                <div key={i} className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all
+                    ${isActive ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 
+                      isDone ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 
+                      'bg-white/5 text-slate-600 border border-white/5'}`}>
+                    {isDone ? <CheckCircle2 size={12} /> : i + 1}
+                  </div>
+                  <span className={`text-xs font-medium transition-all
+                    ${isActive ? 'text-white' : isDone ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {label}
+                  </span>
                 </div>
-                {label}
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
 
-          <div style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '10px',
-            lineHeight: '1.5', borderTop: '1px solid var(--b1)', paddingTop: '8px' }}>
-            {FLOW_DESC[flowType] || ''}
+          <div className="mt-4 pt-4 border-t border-white/5 text-[11px] text-slate-500 leading-relaxed italic">
+            "{FLOW_DESC[flowType] || 'Holding space for you.'}"
           </div>
         </div>
 
-        {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          {[['Messages', msgCount], ['Risk', riskLevel]].map(([label, val]) => (
-            <div key={String(label)} style={{ padding: '10px', background: 'var(--s2)',
-              borderRadius: '8px', border: '1px solid var(--b1)', textAlign: 'center' }}>
-              <div style={{
-                fontSize: '16px', fontWeight: 600, fontFamily: 'monospace',
-                color: String(label) === 'Risk' ? riskColor : 'var(--t1)',
-              }}>{String(val)}</div>
-              <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '2px' }}>{String(label)}</div>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 glass-card text-center">
+            <div className="text-sm font-bold text-white mb-1 flex items-center justify-center gap-1.5">
+              <MessageSquare size={12} className="text-indigo-400" />
+              {msgCount}
             </div>
-          ))}
+            <div className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Messages</div>
+          </div>
+          <div className="p-3 glass-card text-center">
+            <div className="text-sm font-bold mb-1 flex items-center justify-center gap-1.5" style={{ color: riskColor }}>
+              <AlertTriangle size={12} />
+              {riskLevel}
+            </div>
+            <div className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Risk Level</div>
+          </div>
         </div>
       </div>
 
-      {/* User pill */}
-      <div style={{ padding: '12px', borderTop: '1px solid var(--b1)' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 12px',
-          background: 'var(--s2)', borderRadius: '8px', border: '1px solid var(--b1)',
-        }}>
-          <div style={{
-            width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-            background: 'linear-gradient(135deg, #5b8ef0, #9b6ef0)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '12px', fontWeight: 600,
-          }}>{username[0]?.toUpperCase() || 'U'}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '13px', fontWeight: 500, overflow: 'hidden',
-              textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{username}</div>
-            <div style={{ fontSize: '10px', color: 'var(--t3)' }}>active session</div>
+      {/* Footer / User Profile */}
+      <div className="p-4 border-t border-white/5">
+        <div className="p-3 glass-card bg-white/[0.03] border-white/5 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg">
+            {username[0]?.toUpperCase() || 'U'}
           </div>
-          <button onClick={onLogout} title="Sign out" style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--t3)', fontSize: '13px', padding: '4px',
-          }}>⏻</button>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-white truncate">{username}</p>
+            <p className="text-[10px] text-indigo-400 font-mono">Verified Session</p>
+          </div>
+          <button 
+            onClick={onLogout}
+            className="p-2 text-slate-500 hover:text-rose-400 transition-colors"
+            title="End Session"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </div>
     </aside>

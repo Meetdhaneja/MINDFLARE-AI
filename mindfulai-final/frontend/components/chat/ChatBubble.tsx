@@ -1,4 +1,6 @@
 import React from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Check, Sparkles, ThumbsUp, ThumbsDown } from 'lucide-react'
 
 interface Suggestion {
   title: string
@@ -33,113 +35,103 @@ const CAT_COLORS: Record<string, string> = {
 
 export function ChatBubble({ message, username, onFeedback, feedbackGiven }: Props) {
   const isUser = message.role === 'user'
-
   const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className="fade-up" style={{ display: 'flex', flexDirection: 'column',
-      alignItems: isUser ? 'flex-end' : 'flex-start', marginBottom: '4px' }}>
-
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px',
-        flexDirection: isUser ? 'row-reverse' : 'row' }}>
-
+    <motion.div 
+      initial={{ opacity: 0, y: 15, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} mb-6 w-full`}
+    >
+      <div className={`flex gap-3 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
         {/* Avatar */}
-        <div style={{
-          width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '11px', fontWeight: 600,
-          background: isUser ? 'var(--s3)' : 'linear-gradient(135deg, #5b8ef0, #9b6ef0)',
-          color: isUser ? 'var(--t2)' : '#fff',
-        }}>
-          {isUser ? username[0]?.toUpperCase() || 'U' : '💭'}
+        <div className={`w-9 h-9 rounded-2xl flex-shrink-0 flex items-center justify-center text-sm font-bold glass shadow-lg
+          ${isUser ? 'bg-white/5 text-slate-400' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'}`}>
+          {isUser ? username[0]?.toUpperCase() || 'U' : <Sparkles size={16} />}
         </div>
 
-        {/* Bubble */}
-        <div style={{ maxWidth: '72%' }}>
-          <div style={{
-            padding: '11px 15px', fontSize: '14px', lineHeight: '1.65',
-            borderRadius: '18px', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-            ...(isUser
-              ? { background: 'var(--acc)', color: '#fff', borderBottomRightRadius: '4px' }
-              : { background: 'var(--s1)', border: '1px solid var(--b2)', color: 'var(--t1)', borderBottomLeftRadius: '4px' }
-            )
-          }}>
+        {/* Message Content */}
+        <div className="flex flex-col gap-1">
+          <div className={`px-5 py-3.5 text-[15px] leading-relaxed shadow-xl
+            ${isUser 
+              ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none' 
+              : 'glass text-slate-100 rounded-2xl rounded-tl-none border-white/5'}`}>
             {message.content}
           </div>
 
-          {/* Suggestion pill */}
+          {/* Suggestion Card */}
           {!isUser && message.suggestion && (
-            <div style={{
-              marginTop: '8px', padding: '12px 14px',
-              background: 'var(--s2)', border: '1px solid var(--b2)',
-              borderRadius: '14px', maxWidth: '100%',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
-                <span style={{ fontSize: '10px', fontFamily: 'monospace',
-                  color: CAT_COLORS[message.suggestion.category] || 'var(--acc)',
-                  textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  💡 suggestion
-                </span>
-                <span style={{ fontSize: '10px', color: 'var(--t3)', fontFamily: 'monospace' }}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mt-3 p-5 glass-card border-indigo-500/20 bg-indigo-500/5 shadow-2xl space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Personalized Suggestion</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-mono bg-white/5 px-2 py-0.5 rounded-full">
                   {message.suggestion.category}
                 </span>
               </div>
-              <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '4px' }}>
-                {message.suggestion.title}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--t2)', lineHeight: '1.5' }}>
-                {message.suggestion.description}
+              
+              <div>
+                <h4 className="text-sm font-semibold text-white mb-1">{message.suggestion.title}</h4>
+                <p className="text-xs text-slate-400 leading-relaxed">{message.suggestion.description}</p>
               </div>
 
-              {!feedbackGiven && onFeedback && (
-                <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
-                  {[['👍', 1, 'Helpful'], ['👎', -1, 'Not quite']].map(([emoji, val, label]) => (
-                    <button key={String(val)} onClick={() => onFeedback(val as number, message.suggestion?.title)}
-                      style={{
-                        padding: '4px 10px', borderRadius: '20px',
-                        border: '1px solid var(--b2)', background: 'none',
-                        color: 'var(--t3)', cursor: 'pointer', fontSize: '12px',
-                        display: 'flex', alignItems: 'center', gap: '4px',
-                      }}>
-                      {emoji} {label}
+              {/* Feedback */}
+              <div className="pt-2 flex items-center gap-3">
+                {!feedbackGiven ? (
+                  <>
+                    <button 
+                      onClick={() => onFeedback?.(1, message.suggestion?.title)}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/5 hover:bg-indigo-500/20 transition-all text-[11px] text-slate-400 hover:text-indigo-300"
+                    >
+                      <ThumbsUp size={12} /> Helpful
                     </button>
-                  ))}
-                </div>
-              )}
-              {feedbackGiven && (
-                <div style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '8px' }}>
-                  Thanks for the feedback ✓
-                </div>
-              )}
-            </div>
+                    <button 
+                      onClick={() => onFeedback?.(-1, message.suggestion?.title)}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/5 hover:bg-rose-500/20 transition-all text-[11px] text-slate-400 hover:text-rose-300"
+                    >
+                      <ThumbsDown size={12} /> Not quite
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-medium bg-emerald-500/10 px-3 py-1.5 rounded-xl">
+                    <Check size={12} /> Feedback received
+                  </div>
+                )}
+              </div>
+            </motion.div>
           )}
 
-          {/* Time */}
-          <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '4px',
-            textAlign: isUser ? 'right' : 'left', fontFamily: 'monospace' }}>
+          <span className="text-[10px] text-slate-500 font-mono mt-1 px-1">
             {fmt(message.timestamp)}
-          </div>
+          </span>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
 export function TypingBubble() {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '4px' }}>
-      <div style={{
-        width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px',
-        background: 'linear-gradient(135deg, #5b8ef0, #9b6ef0)',
-      }}>💭</div>
-      <div style={{
-        padding: '12px 16px', background: 'var(--s1)', border: '1px solid var(--b2)',
-        borderRadius: '18px', borderBottomLeftRadius: '4px',
-        display: 'flex', gap: '4px', alignItems: 'center',
-      }}>
-        <span className="dot" /><span className="dot" /><span className="dot" />
+    <motion.div 
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="flex items-center gap-3 mb-6"
+    >
+      <div className="w-9 h-9 rounded-2xl flex-shrink-0 flex items-center justify-center glass bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg">
+        <Sparkles size={16} />
       </div>
-    </div>
+      <div className="px-5 py-4 glass text-slate-100 rounded-2xl rounded-tl-none border-white/5 flex gap-1.5 items-center">
+        <div className="typing-dot" />
+        <div className="typing-dot" />
+        <div className="typing-dot" />
+      </div>
+    </motion.div>
   )
 }
