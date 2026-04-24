@@ -56,38 +56,78 @@ function validateResponse(response: string, history: any[]) {
 }
 
 // -----------------------------
+// HELPER: USER PROFILE DETECTOR
+// -----------------------------
+function detectProfile(history: any[]) {
+  const t = history.map(m => m.content.toLowerCase()).join(" ");
+  return {
+    personality: t.includes("alone") || t.includes("quiet") ? "Introvert" : "Extrovert",
+    coping_style: t.includes("fix") || t.includes("do") ? "Problem-solver" : "Avoidant/Emotional",
+    energy: t.includes("tired") || t.includes("exhausted") ? "Low" : "Normal",
+    social: t.includes("people") || t.includes("friends") ? "High" : "Low"
+  };
+}
+
+// -----------------------------
+// HELPER: SUGGESTION ENGINE
+// -----------------------------
+function getSuggestion(emotion: string, profile: any, turn: number) {
+  if (turn < 3) return null;
+  
+  if (emotion === "anxiety") return "maybe try focusing on your breath for just 30 seconds... it can help anchor you.";
+  if (emotion === "sadness" && profile.energy === "Low") return "even just resting for a moment without your phone might give you a bit of space.";
+  if (profile.personality === "Introvert") return "perhaps some quiet time with a book or just your thoughts could feel grounding.";
+  return "sometimes a small change of scenery, even just a different room, can shift things slightly.";
+}
+
+// -----------------------------
 // MAIN ORCHESTRATOR
 // -----------------------------
 export async function POST(req: NextRequest) {
   try {
     const { messages, user_input } = await req.json();
 
-    // 1. INPUT PIPELINE (ELITE BRAIN)
+    // 1. INPUT PIPELINE (ELITE BRAIN 4.0)
     const history = messages.slice(-12);
     const text = user_input.toLowerCase();
+    const turnCount = history.length;
+    const profile = detectProfile(history);
     
+    // Extract past suggestions to avoid repetition
+    const pastSuggestions = history
+      .filter(m => m.role === "assistant")
+      .map(m => m.content.toLowerCase());
+
     let emotion = "neutral";
-    if (text.includes("sad") || text.includes("lonely")) emotion = "sadness";
-    if (text.includes("anxious") || text.includes("panic")) emotion = "anxiety";
+    if (text.includes("sad") || text.includes("lonely") || text.includes("hurt")) emotion = "sadness";
+    if (text.includes("anxious") || text.includes("panic") || text.includes("scared")) emotion = "anxiety";
+    if (text.includes("angry") || text.includes("mad")) emotion = "anger";
 
     const trend = detectTrend(history, emotion);
     const userType = detectUserType(user_input);
-    const turnCount = history.length;
-    const depth = turnCount <= 2 ? 1 : turnCount <= 5 ? 2 : 3;
+    const depth = Math.min(Math.floor(turnCount / 2) + 1, 3);
     const momentum = detectMomentum(user_input);
     const lastBotWasQ = (history[history.length - 1]?.content || "").includes("?");
     const silence = (momentum === "Low" && lastBotWasQ);
 
-    const stage = turnCount <= 2 ? "listening" : turnCount <= 5 ? "exploring" : "guiding";
+    // Enhanced Action Logic
+    const stage = turnCount <= 3 ? "listening" : turnCount <= 6 ? "exploring" : "guiding";
     let action = "EMPATHIZE";
-    if (stage === "listening") action = turnCount === 0 ? "EMPATHIZE" : "REFLECT";
+    if (silence) action = "REFLECT";
+    else if (stage === "listening") action = turnCount % 2 === 0 ? "EMPATHIZE" : "REFLECT";
     else if (stage === "exploring") action = "EXPLORE";
     else action = turnCount % 2 === 0 ? "GUIDE" : "SUGGEST";
 
-    // 2. CONTROLLED PROMPT BUILDING
+    let suggestion = getSuggestion(emotion, profile, turnCount);
+    // Anti-Repetition for Suggestions
+    if (suggestion && pastSuggestions.some(prev => prev.includes(suggestion!.split("...")[0]))) {
+      suggestion = "maybe just taking a deep breath and noticing one thing you can see right now could help.";
+    }
+
+    // 2. CONVERSATION BRAIN PROMPT
     const systemPrompt = `
-You are the decision-making brain of a human-like conversational AI.
-You generate controlled, grounded, and context-aware responses.
+You are the CONVERSATION BRAIN of a human-like AI assistant.
+You do NOT simply reply. You DECIDE how to respond using structured intelligence.
 
 ---
 INPUT STATE:
@@ -98,46 +138,32 @@ User Type: ${userType}
 Depth Level: ${depth}
 Momentum: ${momentum}
 Silence Mode: ${silence}
+Turn Count: ${turnCount}
+
+USER PROFILE:
+- Personality: ${profile.personality}
+- Coping Style: ${profile.coping_style}
+- Energy Level: ${profile.energy}
+- Social Preference: ${profile.social}
 ---
 
-CORE OBJECTIVE: Generate a response that is emotionally accurate, grounded in user input, and progressive.
+CORE OBJECTIVE: Generate a response that is emotionally accurate, context-aware, and personalized.
 
----
+STRICT RESPONSE STRUCTURE (MANDATORY):
+1. Emotional acknowledgment (Warm, human)
+2. Deeper insight or reflection (Based on Depth Level)
+3. Action-based response (Follow Action: ${action} strictly)
+4. Personalized Suggestion (IF turn >= 3: ${suggestion || "none"})
+5. Optional ONE soft question
+
+STRICT ANTI-HALLUCINATION & ANTI-REPETITION:
+- DO NOT assume facts. Use "it seems like..." or "it might be..."
+- DO NOT repeat phrases from previous messages: ${history.slice(-3).map(m => m.content).join(" | ")}
+- NEVER use generic advice like "stay positive".
+
 GOLD STANDARD EXAMPLES (FOLLOW THIS TONE):
-Example 1:
-User: "I don't know how to handle this creative block."
-Assistant: "It makes sense that this is getting to you — there's real stuff happening here. So the anger is there... but underneath it, what's actually going on? What do you think would happen if you told someone close to you what you just told me?"
-
-Example 2:
-User: "Relationship anxiety is genuinely hard."
-Assistant: "I notice you almost minimized that just now — but what you described? That's heavy. If you took the other person out of the equation — what are you left with?"
-
-Example 3:
 User: "I've been up since 3am spiraling about my job."
 Assistant: "I can feel the tension in what you're describing. Like you're stretched thin. What part of this situation feels most out of your control right now?"
----
-
-STRICT ANTI-HALLUCINATION RULES:
-1. DO NOT INVENT FACTS: Only use info provided by user. Do NOT assume details.
-2. NO FAKE CERTAINTY: Avoid absolute statements like "always" or "definitely". Use "It sounds like" or "It might be".
-3. NOTopic Drift: Do not change topic or introduce unrelated ideas.
-
-ACTION ENFORCEMENT:
-- EMPATHIZE: Validate emotion. No advice. No question.
-- REFLECT: Rephrase feeling. Add depth. Optional 1 soft question.
-- EXPLORE: Ask 1 meaningful, specific question. No generic questions.
-- GUIDE: Provide perspective. No direct instructions.
-- SUGGEST: Provide 1 small, realistic step.
-
-USER TYPE ADAPTATION:
-- Venting: prioritize listening, minimal questions.
-- Confused: gentle clarification, help structure thoughts.
-- Solution-seeker: 1 clear, simple action.
-
-RESPONSE CONSTRAINTS:
-- 2 to 4 lines only. Natural human tone.
-- NO repetition. NO robotic phrasing.
-- Each response MUST add new value or perspective.
     `;
 
     // 3. GENERATION LOOP (STRENGTHENED)
@@ -148,13 +174,7 @@ RESPONSE CONSTRAINTS:
     while (attempts <= MAX_ATTEMPTS) {
       let currentPrompt = systemPrompt;
       if (attempts > 0) {
-        currentPrompt += `
-\nCRITICAL ERROR: YOU ARE REPEATING YOURSELF. 
-YOUR PREVIOUS ATTEMPT WAS TOO SIMILAR TO EARLIER RESPONSES.
-DO NOT USE THE SAME PHRASING. DO NOT USE THE SAME STRUCTURE.
-SAY SOMETHING COMPLETELY NEW AND MOVE THE CONVERSATION FORWARD.
-IF YOU ARE STUCK, SHIFT THE ANGLE ENTIRELY.
-`;
+        currentPrompt += "\nCRITICAL: YOUR LAST ATTEMPT WAS REPETITIVE. CHANGE THE STRUCTURE ENTIRELY.";
       }
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
