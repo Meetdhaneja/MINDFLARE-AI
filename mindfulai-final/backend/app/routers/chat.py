@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import User, Message, UserProfile
-from app.schemas.schemas import ChatReq, ChatRes, FeedbackReq, ProfileOut, HistoryMsg
+from app.schemas.schemas import ChatReq, ChatRes, FeedbackReq, ProfileOut, HistoryMsg, SyncReq
 from app.services.chat_service import run_pipeline, run_pipeline_stream
 from app.services.memory_service import update_suggestion_pref
 import logging
