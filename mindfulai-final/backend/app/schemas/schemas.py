@@ -46,6 +46,16 @@ class ChatRes(BaseModel):
     safe: bool = True
 
 
+class SyncReq(BaseModel):
+    user_message: str
+    response: str
+    emotion: str
+    flow: str
+    flow_step: int
+    session_id: str
+    safe: bool = True
+
+
 class FeedbackReq(BaseModel):
     message_id: int
     rating: int = Field(..., ge=-1, le=1)

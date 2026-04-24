@@ -16,7 +16,7 @@ router = APIRouter(tags=["Chat"])
 
 @router.post("/save")
 async def save_chat(
-    req: ChatRes,
+    req: SyncReq,
     bg: BackgroundTasks,
     user: User = Depends(get_current_user),
 ):
@@ -25,12 +25,12 @@ async def save_chat(
         _save_turn_and_profile,
         user_id=user.id,
         session_id=req.session_id,
-        user_message="[Syncing...]", # User message is typically already saved or provided in req
+        user_message=req.user_message,
         ai_response=req.response,
         emotion=req.emotion,
         flow_type=req.flow,
         flow_step=req.flow_step,
-        suggestion=req.suggestion.title if req.suggestion else "",
+        suggestion="", # Suggestion logic can be added if needed
         is_crisis=not req.safe,
     )
     return {"status": "synced"}

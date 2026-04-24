@@ -168,6 +168,7 @@ export default function ChatPage() {
 
       // 3. SYNC TO DATABASE (POSTGRES)
       api.saveChat({
+        user_message: content,
         response: aiReply,
         emotion: data.emotion,
         flow: data.flow,
